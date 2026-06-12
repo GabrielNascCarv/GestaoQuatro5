@@ -4,11 +4,11 @@ services:
     container_name: gestao-quatro5-db
     restart: always
     environment:
-      POSTGRES_USER: gestao
-      POSTGRES_PASSWORD: gestao_password
-      POSTGRES_DB: gestao_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5437:5432"
+      - "${DB_PORT}:5432"
     volumes:
       - gestao_postgres_data:/var/lib/postgresql/data
 
@@ -17,11 +17,11 @@ services:
     container_name: gestao-quatro5-keycloak-db
     restart: always
     environment:
-      POSTGRES_DB: keycloak_gestao
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak_password
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
     ports:
-      - "5438:5432"
+      - "${KEYCLOAK_DB_PORT}:5432"
     volumes:
       - gestao_keycloak_postgres_data:/var/lib/postgresql/data
 
@@ -32,17 +32,17 @@ services:
     depends_on:
       - keycloak-postgres
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin_password
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KEYCLOAK_PRODUCTION: "false"
       KEYCLOAK_ENABLE_HTTPS: "false"
       KEYCLOAK_DATABASE_HOST: keycloak-postgres
       KEYCLOAK_DATABASE_PORT: "5432"
-      KEYCLOAK_DATABASE_NAME: keycloak_gestao
-      KEYCLOAK_DATABASE_USER: keycloak
-      KEYCLOAK_DATABASE_PASSWORD: keycloak_password
+      KEYCLOAK_DATABASE_NAME: ${KEYCLOAK_DB_NAME}
+      KEYCLOAK_DATABASE_USER: ${KEYCLOAK_DB_USER}
+      KEYCLOAK_DATABASE_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
     ports:
-      - "8081:8080"
+      - "${KEYCLOAK_PORT}:8080"
 
 volumes:
   gestao_postgres_data:
