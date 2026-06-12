@@ -3,6 +3,7 @@ export class User {
   name!: string;
   email!: string;
   password!: string;
+  keycloak_id?: string | null;
   created_at!: Date;
   updated_at!: Date;
   deleted_at?: Date | null;
@@ -11,3 +12,4 @@ export class User {
     Object.assign(this, props);
   }
 }
+

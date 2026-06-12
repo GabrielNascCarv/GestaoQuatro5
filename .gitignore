@@ -29,3 +29,7 @@ lerna-debug.log*
 *.db
 .DS_Store
 Thumbs.db
+
+# Project integration guides
+keycloak-integracao.md
+
