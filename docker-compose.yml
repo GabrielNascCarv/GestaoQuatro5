@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gestao-quatro5-db
+    restart: always
+    environment:
+      POSTGRES_USER: gestao
+      POSTGRES_PASSWORD: gestao_password
+      POSTGRES_DB: gestao_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - gestao_postgres_data:/var/lib/postgresql/data
+
+  keycloak-postgres:
+    image: postgres:16-alpine
+    container_name: gestao-quatro5-keycloak-db
+    restart: always
+    environment:
+      POSTGRES_DB: keycloak_gestao
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_password
+    ports:
+      - "5438:5432"
+    volumes:
+      - gestao_keycloak_postgres_data:/var/lib/postgresql/data
+
+  keycloak:
+    image: bitnamilegacy/keycloak:latest
+    container_name: gestao-quatro5-keycloak
+    restart: always
+    depends_on:
+      - keycloak-postgres
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin_password
+      KEYCLOAK_PRODUCTION: "false"
+      KEYCLOAK_ENABLE_HTTPS: "false"
+      KEYCLOAK_DATABASE_HOST: keycloak-postgres
+      KEYCLOAK_DATABASE_PORT: "5432"
+      KEYCLOAK_DATABASE_NAME: keycloak_gestao
+      KEYCLOAK_DATABASE_USER: keycloak
+      KEYCLOAK_DATABASE_PASSWORD: keycloak_password
+    ports:
+      - "8081:8080"
+
+volumes:
+  gestao_postgres_data:
+  gestao_keycloak_postgres_data:
