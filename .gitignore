@@ -29,3 +29,7 @@ lerna-debug.log*
 *.db
 .DS_Store
 Thumbs.db
+
+# Project architecture documentation (kept locally)
+arquitetura-projeto.md
+
