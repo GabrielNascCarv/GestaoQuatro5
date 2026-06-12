@@ -33,65 +33,94 @@ export class KeycloakAuthGateway implements IAuthGateway {
     const lastName = lastNameParts.length > 0 ? lastNameParts.join(' ') : firstName;
 
     // 1. Create user in Keycloak
-    const createdUser = await this.kcAdminClient.users.create({
-      username: user.email,
-      email: user.email,
-      firstName,
-      lastName,
-      enabled: true,
-      emailVerified: true,
-    });
+    let keycloakId: string;
+    try {
+      const createdUser = await this.kcAdminClient.users.create({
+        username: user.email,
+        email: user.email,
+        firstName,
+        lastName,
+        enabled: true,
+        emailVerified: true,
+      });
 
-    const keycloakId = createdUser.id;
-    if (!keycloakId) {
-      throw new Error('Failed to create user in Keycloak: ID not returned.');
+      if (!createdUser.id) {
+        throw new Error('ID not returned.');
+      }
+      keycloakId = createdUser.id;
+    } catch (err: any) {
+      console.error('Error creating user in Keycloak:', err.message || err);
+      throw new Error(`Failed to create user in Keycloak: ${err.message || err}`);
     }
 
     // 2. Set password (non-temporary)
     if (user.password) {
-      await this.kcAdminClient.users.resetPassword({
-        id: keycloakId,
-        credential: {
-          type: 'password',
-          value: user.password,
-          temporary: false,
-        },
-      });
+      try {
+        await this.kcAdminClient.users.resetPassword({
+          id: keycloakId,
+          credential: {
+            type: 'password',
+            value: user.password,
+            temporary: false,
+          },
+        });
+      } catch (err: any) {
+        console.error('Error resetting user password in Keycloak:', err.message || err);
+        throw new Error(`Failed to set user password in Keycloak: ${err.message || err}`);
+      }
     }
 
     // 3. Find client UUID
     const clientIdName = process.env.KEYCLOAK_CLIENT_ID;
-    const clients = await this.kcAdminClient.clients.find({
-      clientId: clientIdName,
-    });
+    let clientUuid: string;
+    try {
+      const clients = await this.kcAdminClient.clients.find({
+        clientId: clientIdName,
+      });
 
-    const clientUuid = clients[0]?.id;
-    if (!clientUuid) {
-      throw new Error(`Client '${clientIdName}' not found in Keycloak.`);
+      const foundClient = clients[0]?.id;
+      if (!foundClient) {
+        throw new Error(`Client '${clientIdName}' not found.`);
+      }
+      clientUuid = foundClient;
+    } catch (err: any) {
+      console.error('Error querying client UUID in Keycloak (check if Service Account has "view-clients" role):', err.message || err);
+      throw new Error(`Failed to query client UUID in Keycloak: ${err.message || err}`);
     }
 
-    // 4. Find 'operador' client role
-    const clientRoles = await this.kcAdminClient.clients.listRoles({
-      id: clientUuid,
-    });
+    // 4. Find 'user' client role
+    let userRole: any;
+    try {
+      const clientRoles = await this.kcAdminClient.clients.listRoles({
+        id: clientUuid,
+      });
 
-    const operadorRole = clientRoles.find((role) => role.name === 'operador');
-    if (!operadorRole) {
-      throw new Error(`Role 'operador' not found under client '${clientIdName}' in Keycloak.`);
+      const foundRole = clientRoles.find((role) => role.name === 'user');
+      if (!foundRole) {
+        throw new Error(`Role 'user' not found under client '${clientIdName}'.`);
+      }
+      userRole = foundRole;
+    } catch (err: any) {
+      console.error('Error finding client role in Keycloak:', err.message || err);
+      throw new Error(`Failed to find client role in Keycloak: ${err.message || err}`);
     }
 
     // 5. Assign client role to user
-    await this.kcAdminClient.users.addClientRoleMappings({
-      id: keycloakId,
-      clientUniqueId: clientUuid,
-      roles: [
-        {
-          id: operadorRole.id!,
-          name: operadorRole.name!,
-        },
-      ],
-    });
-
+    try {
+      await this.kcAdminClient.users.addClientRoleMappings({
+        id: keycloakId,
+        clientUniqueId: clientUuid,
+        roles: [
+          {
+            id: userRole.id!,
+            name: userRole.name!,
+          },
+        ],
+      });
+    } catch (err: any) {
+      console.error('Error mapping client role to user in Keycloak:', err.message || err);
+      throw new Error(`Failed to assign role to user in Keycloak: ${err.message || err}`);
+    }
 
     return { keycloakId };
   }
