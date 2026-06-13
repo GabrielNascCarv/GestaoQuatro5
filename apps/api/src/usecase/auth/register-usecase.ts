@@ -20,6 +20,7 @@ export class RegisterUseCase implements IRegisterUseCase {
       name: data.name,
       email: data.email,
       password: data.password,
+      role: 'user',
     });
 
     // 2. Create user in local database mapping keycloak_id

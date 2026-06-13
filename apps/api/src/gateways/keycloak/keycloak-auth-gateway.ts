@@ -88,21 +88,22 @@ export class KeycloakAuthGateway implements IAuthGateway {
       throw new Error(`Failed to query client UUID in Keycloak: ${err.message || err}`);
     }
 
-    // 4. Find 'user' client role
+    // 4. Find requested client role
+    const roleName = user.role || 'user';
     let userRole: any;
     try {
       const clientRoles = await this.kcAdminClient.clients.listRoles({
         id: clientUuid,
       });
 
-      const foundRole = clientRoles.find((role) => role.name === 'user');
+      const foundRole = clientRoles.find((role) => role.name === roleName);
       if (!foundRole) {
-        throw new Error(`Role 'user' not found under client '${clientIdName}'.`);
+        throw new Error(`Role '${roleName}' not found under client '${clientIdName}'.`);
       }
       userRole = foundRole;
     } catch (err: any) {
       console.error('Error finding client role in Keycloak:', err.message || err);
-      throw new Error(`Failed to find client role in Keycloak: ${err.message || err}`);
+      throw new Error(`Failed to find client role '${roleName}' in Keycloak: ${err.message || err}`);
     }
 
     // 5. Assign client role to user
