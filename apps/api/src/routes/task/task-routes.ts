@@ -4,6 +4,7 @@ import { CreateTaskControllerFactory } from '../../factory/controller/task/creat
 import { GetTaskControllerFactory } from '../../factory/controller/task/get-task-factory';
 import { ListTasksControllerFactory } from '../../factory/controller/task/list-tasks-factory';
 import { UpdateTaskControllerFactory } from '../../factory/controller/task/update-task-factory';
+import { DeleteTaskControllerFactory } from '../../factory/controller/task/delete-task-factory';
 
 export async function taskRoutes(fastify: FastifyInstance) {
   fastify.post(
@@ -24,5 +25,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
   fastify.patch(
     '/tasks/:id',
     adaptRoute(UpdateTaskControllerFactory.create())
+  );
+
+  fastify.delete(
+    '/tasks/:id',
+    adaptRoute(DeleteTaskControllerFactory.create())
   );
 }
