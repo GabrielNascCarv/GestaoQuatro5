@@ -1,5 +1,5 @@
 import KeycloakAdminClient from '@keycloak/keycloak-admin-client';
-import { AuthUser, IAuthGateway } from '../../contracts/gateways/auth-gateway';
+import { AuthUser, AuthCredentials, IAuthGateway } from '../../contracts/gateways/auth-gateway';
 
 export class KeycloakAuthGateway implements IAuthGateway {
   private kcAdminClient: KeycloakAdminClient;
@@ -123,5 +123,96 @@ export class KeycloakAuthGateway implements IAuthGateway {
     }
 
     return { keycloakId };
+  }
+
+  async issueAccessToken(credentials: AuthCredentials): Promise<{ accessToken: string; refreshToken: string }> {
+    const baseUrl = process.env.KEYCLOAK_BASE_URL;
+    const realm = process.env.KEYCLOAK_REALM;
+    const clientId = process.env.KEYCLOAK_CLIENT_ID;
+    const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
+
+    if (!baseUrl || !realm || !clientId) {
+      throw new Error('KEYCLOAK_BASE_URL, KEYCLOAK_REALM, and KEYCLOAK_CLIENT_ID are required.');
+    }
+
+    const tokenUrl = `${baseUrl}/realms/${realm}/protocol/openid-connect/token`;
+    const body = new URLSearchParams({
+      grant_type: 'password',
+      username: credentials.email,
+      password: credentials.password,
+      client_id: clientId,
+    });
+
+    if (clientSecret) {
+      body.append('client_secret', clientSecret);
+    }
+
+    try {
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Status ${response.status}: ${errorText}`);
+      }
+
+      const payload = (await response.json()) as { access_token?: string; refresh_token?: string };
+
+      if (!payload.access_token || !payload.refresh_token) {
+        throw new Error('Access token or refresh token not returned by Keycloak.');
+      }
+
+      return {
+        accessToken: payload.access_token,
+        refreshToken: payload.refresh_token,
+      };
+    } catch (err: any) {
+      console.error('Error issuing access token in Keycloak:', err.message || err);
+      throw new Error(`Failed to login in Keycloak: ${err.message || err}`);
+    }
+  }
+
+  async logout(refreshToken: string): Promise<void> {
+    const baseUrl = process.env.KEYCLOAK_BASE_URL;
+    const realm = process.env.KEYCLOAK_REALM;
+    const clientId = process.env.KEYCLOAK_CLIENT_ID;
+    const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
+
+    if (!baseUrl || !realm || !clientId) {
+      throw new Error('KEYCLOAK_BASE_URL, KEYCLOAK_REALM, and KEYCLOAK_CLIENT_ID are required.');
+    }
+
+    const logoutUrl = `${baseUrl}/realms/${realm}/protocol/openid-connect/logout`;
+    const body = new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: clientId,
+    });
+
+    if (clientSecret) {
+      body.append('client_secret', clientSecret);
+    }
+
+    try {
+      const response = await fetch(logoutUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Status ${response.status}: ${errorText}`);
+      }
+    } catch (err: any) {
+      console.error('Error logging out in Keycloak:', err.message || err);
+      throw new Error(`Failed to logout in Keycloak: ${err.message || err}`);
+    }
   }
 }
