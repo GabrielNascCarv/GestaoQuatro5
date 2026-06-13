@@ -3,6 +3,7 @@ import { adaptRoute } from '../../adapters/fastify-route-adapter';
 import { CreateTaskControllerFactory } from '../../factory/controller/task/create-task-factory';
 import { GetTaskControllerFactory } from '../../factory/controller/task/get-task-factory';
 import { ListTasksControllerFactory } from '../../factory/controller/task/list-tasks-factory';
+import { UpdateTaskControllerFactory } from '../../factory/controller/task/update-task-factory';
 
 export async function taskRoutes(fastify: FastifyInstance) {
   fastify.post(
@@ -18,5 +19,10 @@ export async function taskRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/tasks/:id',
     adaptRoute(GetTaskControllerFactory.create())
+  );
+
+  fastify.patch(
+    '/tasks/:id',
+    adaptRoute(UpdateTaskControllerFactory.create())
   );
 }
