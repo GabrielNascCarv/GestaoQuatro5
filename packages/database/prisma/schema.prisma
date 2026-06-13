@@ -17,6 +17,36 @@ model User {
   updated_at  DateTime  @updatedAt
   deleted_at  DateTime?
 
+  assigned_tasks Task[]   @relation("AssignedTasks")
+  created_tasks  Task[]   @relation("CreatedTasks")
+
   @@map("users")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+}
+
+model Task {
+  id             String     @id @default(uuid())
+  title          String
+  description    String?
+  score          Int
+  status         TaskStatus @default(TODO)
+  
+  assigned_to_id String?
+  assigned_to    User?      @relation("AssignedTasks", fields: [assigned_to_id], references: [id])
+
+  created_by_id  String
+  created_by     User       @relation("CreatedTasks", fields: [created_by_id], references: [id])
+
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+  deleted_at     DateTime?
+
+  @@map("tasks")
 }
 
