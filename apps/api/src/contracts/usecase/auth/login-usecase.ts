@@ -1,9 +1,7 @@
-export interface AuthCredentials {
+export interface LoginUseCaseInput {
   email: string;
   password: string;
 }
-
-export interface LoginUseCaseInput extends AuthCredentials {}
 
 export interface LoginUseCaseOutput {
   accessToken: string;
