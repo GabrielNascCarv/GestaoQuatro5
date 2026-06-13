@@ -21,6 +21,7 @@ interface DecodedToken {
   name?: string;
   email?: string;
   preferred_username?: string;
+  db_user_id?: string;
 }
 
 export function Login() {
@@ -48,7 +49,7 @@ export function Login() {
       // Decode JWT to extract user information
       const decoded = jwtDecode<DecodedToken>(tokens.accessToken);
       const user = {
-        id: decoded.sub,
+        id: decoded.db_user_id || decoded.sub,
         name: decoded.name || decoded.preferred_username || 'Usuário',
         email: decoded.email || data.email,
         created_at: new Date().toISOString(),

@@ -12,6 +12,7 @@ export interface AuthCredentials {
 
 export interface IAuthGateway {
   createUser(user: AuthUser): Promise<{ keycloakId: string }>;
+  updateUserAttributes(keycloakId: string, attributes: Record<string, string[]>): Promise<void>;
   issueAccessToken(credentials: AuthCredentials): Promise<{ accessToken: string; refreshToken: string }>;
   logout(refreshToken: string): Promise<void>;
 }

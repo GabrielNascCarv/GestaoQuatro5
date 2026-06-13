@@ -126,6 +126,30 @@ export class KeycloakAuthGateway implements IAuthGateway {
     return { keycloakId };
   }
 
+  async updateUserAttributes(keycloakId: string, attributes: Record<string, string[]>): Promise<void> {
+    await this.authenticate();
+    try {
+      const existingUser = await this.kcAdminClient.users.findOne({ id: keycloakId });
+      if (!existingUser) {
+        throw new Error(`User with ID ${keycloakId} not found in Keycloak.`);
+      }
+
+      await this.kcAdminClient.users.update(
+        { id: keycloakId },
+        {
+          ...existingUser,
+          attributes: {
+            ...existingUser.attributes,
+            ...attributes,
+          },
+        }
+      );
+    } catch (err: any) {
+      console.error('Error updating user attributes in Keycloak:', err.message || err);
+      throw new Error(`Failed to update user attributes in Keycloak: ${err.message || err}`);
+    }
+  }
+
   async issueAccessToken(credentials: AuthCredentials): Promise<{ accessToken: string; refreshToken: string }> {
     const baseUrl = process.env.KEYCLOAK_BASE_URL;
     const realm = process.env.KEYCLOAK_REALM;
