@@ -17,4 +17,8 @@ export class CreateTaskDto {
   @IsNotEmpty({ message: 'O ID do criador é obrigatório.' })
   @IsString()
   created_by_id!: string;
+
+  @IsOptional()
+  @IsString()
+  due_date?: string;
 }

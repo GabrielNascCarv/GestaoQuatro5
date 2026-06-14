@@ -14,6 +14,8 @@ export class ListUserTasksUseCase implements IListUserTasksUseCase {
       status: item.status,
       assigned_to_id: item.assigned_to_id ?? null,
       created_by_id: item.created_by_id,
+      due_date: item.due_date ?? null,
+      completed_at: item.completed_at ?? null,
       created_at: item.created_at,
       updated_at: item.updated_at,
     }));
