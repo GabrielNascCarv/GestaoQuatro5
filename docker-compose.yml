@@ -41,8 +41,11 @@ services:
       KEYCLOAK_DATABASE_NAME: ${KEYCLOAK_DB_NAME}
       KEYCLOAK_DATABASE_USER: ${KEYCLOAK_DB_USER}
       KEYCLOAK_DATABASE_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KEYCLOAK_EXTRA_ARGS: "--import-realm"
     ports:
       - "${KEYCLOAK_PORT}:8080"
+    volumes:
+      - ./keycloak-realm.json:/opt/bitnami/keycloak/data/import/keycloak-realm.json
 
 volumes:
   gestao_postgres_data:
