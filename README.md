@@ -99,3 +99,51 @@ Ao popular o banco de dados usando `npm run db:seed` com o Keycloak importado, v
 ### 💻 Usuário Desenvolvedor (Acesso padrão)
 *   **E-mail / Usuário**: `dev@gmail.com`
 *   **Senha**: `123456`
+
+---
+
+## 🎯 Metodologia de Gestão Adotada
+
+Para solucionar as dores do Ricardo, o projeto adota um modelo híbrido combinando **Kanban** e **Ciclos Semanais (Sprints Curtas)**:
+
+1. **Visualização por Kanban**: Organiza as tarefas em quatro colunas (*A Fazer*, *Em Desenvolvimento*, *Em Revisão* e *Concluído*). Isso elimina o problema de tarefas espalhadas em papel/WhatsApp, permitindo a centralização e acompanhamento do fluxo de trabalho do time em tempo real.
+2. **Ciclos Semanais (Sprints)**: Toda segunda-feira o time planeja e executa tarefas em um ciclo curto. No final da semana (ou no início da próxima), o Administrador realiza o **Fechamento de Semana**, o que limpa o quadro para o novo ciclo e arquiva os dados do ciclo concluído em um **Relatório Semanal**. Isso resolve a falta de números nas reuniões de segunda, gerando um histórico confiável.
+
+---
+
+## 📈 Justificativa dos Indicadores (KPIs)
+
+Cada indicador foi projetado para munir o Ricardo de dados para tomada de decisão ágil:
+
+1. **Carga de Trabalho do Time (Workload Balancer)**:
+   * **O que é**: Exibe a pontuação ativa de tarefas por colaborador, categorizando-os em *Ocioso* (0 pts), *Ideal* (1-10 pts), *Alerta* (11-15 pts) ou *Sobrecarregado* (>15 pts).
+   * **Decisão do Ricardo**: Permite identificar gargalos de produtividade ("gente afogada e gente ociosa"). Ao ver um colaborador em estado de *Sobrecarregado* (vermelho), Ricardo decide redistribuir tarefas ativas para quem está *Ocioso* (cinza) ou *Ideal* (verde) antes que os prazos estourem.
+2. **Prazos em Risco (Critical Deadlines)**:
+   * **O que é**: Lista de forma prioritária as tarefas não concluídas que já venceram ou vencem nas próximas 48 horas.
+   * **Decisão do Ricardo**: Permite agir proativamente antes do cliente reclamar. Ao bater o olho nas tarefas vermelhas desta seção, Ricardo decide entrar em contato direto com o responsável pela tarefa crítica para remover impedimentos ou renegociar o prazo com antecedência.
+3. **Velocidade Semanal (Weekly Velocity)**:
+   * **O que é**: Compara a soma da pontuação das tarefas concluídas no ciclo ativo com a pontuação concluída no último relatório fechado (semana anterior), exibindo a tendência de crescimento ou queda (%).
+   * **Decisão do Ricardo**: Ricardo utiliza a velocidade para planejar a capacidade do time para a próxima semana. Se a velocidade estiver em queda constante, ele pode decidir rever processos ou diminuir a carga de escopo da próxima Sprint.
+4. **Status do Fluxo (Flow Status)**:
+   * **O que é**: Contagem total de tarefas por coluna do Kanban (Total, Ativas, Concluídas, Críticas).
+   * **Decisão do Ricardo**: Ajuda a identificar gargalos no fluxo de trabalho. Se há um acúmulo excessivo em "Em Revisão", Ricardo decide intervir junto aos revisores para destravar as homologações e acelerar as entregas.
+
+---
+
+## ✂️ Decisões de Escopo e Cortes (Trade-offs)
+
+Para garantir a entrega de uma arquitetura limpa e funcional no prazo de 48 horas, foram tomadas as seguintes decisões de cortes:
+* **Interface de Gerenciamento de Usuários**: A criação e exclusão de contas foram delegadas ao Keycloak. Os usuários são provisionados e sincronizados no banco de dados automaticamente através do arquivo de semente (`seed.ts`), mantendo o foco do desenvolvimento no dashboard e nas tarefas.
+* **Histórico Evolutivo Completo**: Em vez de gráficos interativos de linha de longo prazo (como *Cumulative Flow Diagram*), optou-se por focar na comparação semanal ágil (velocidade da semana ativa vs. anterior) e num visualizador dropdown de relatórios antigos, otimizando o tempo de entrega sem perder o histórico do Ricardo.
+* **Atribuição Manual Complexa**: Em vez de fluxos complexos de delegação de tarefas, a ferramenta foca em auto-atribuição rápida de tarefas ativas e troca de status direta no Kanban para simplificar a usabilidade inicial.
+
+---
+
+## 🔮 O que faria com mais tempo?
+
+Caso o projeto contasse com um prazo maior, seriam implementadas as seguintes melhorias:
+1. **Segurança e Proteção das Rotas**: Como as rotas de API do monorepo estão expostas publicamente por fins de facilitação e agilidade do desenvolvimento local, implementaria middlewares de validação de token JWT e controle de papéis (RBAC) com o Keycloak nas rotas da API para torná-las 100% seguras.
+2. **Recuperação de Senha via E-mail**:
+   * Implementação de endpoint de "esqueci minha senha" para gerar e enviar um código de recuperação temporário via e-mail do usuário (integrado a serviços como Amazon SES, SendGrid ou Nodemailer).
+   * Implementação de um endpoint de validação encarregado de ler o código enviado, compará-lo com o hash salvo no banco de dados e liberar a criação de uma nova credencial após a validação bem-sucedida.
+3. **Refinamento na Estimativa de Pontuação das Tarefas**: Atualmente, a pontuação das tarefas é informada de forma direta e manual, assumindo que o Ricardo sabe exatamente quanto vale cada tarefa. Como na realidade ele pode não saber mensurar esse valor, implementaria um assistente ou modelo de estimativa de complexidade (ex: tamanho de camiseta P/M/G ou nível de esforço simplificado de 1 a 5) que converteria as respostas dele em pontuação de forma intuitiva.
