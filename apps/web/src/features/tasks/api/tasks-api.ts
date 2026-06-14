@@ -1,5 +1,5 @@
 import { apiClient } from '../../../lib/api-client';
-import type { Task, CreateTaskDto, UpdateTaskDto } from '../types';
+import type { Task, CreateTaskDto, UpdateTaskDto, TaskMetrics } from '../types';
 
 export const tasksApi = {
   create: async (data: CreateTaskDto): Promise<Task> => {
@@ -29,5 +29,10 @@ export const tasksApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/tasks/${id}`);
+  },
+
+  getMetrics: async (): Promise<TaskMetrics> => {
+    const response = await apiClient.get<TaskMetrics>('/tasks/metrics');
+    return response.data;
   },
 };
