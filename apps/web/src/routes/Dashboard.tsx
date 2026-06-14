@@ -51,10 +51,19 @@ export function Dashboard() {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   const fetchTasks = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
-      const data = await tasksApi.list();
-      setTasks(data);
+      const [unassigned, assigned] = await Promise.all([
+        tasksApi.list(),
+        tasksApi.listByUser(user.id),
+      ]);
+      // Remove duplicates just in case, though they shouldn't overlap
+      const allTasks = [...unassigned, ...assigned];
+      const uniqueTasks = allTasks.filter(
+        (task, index, self) => self.findIndex((t) => t.id === task.id) === index
+      );
+      setTasks(uniqueTasks);
     } catch (error) {
       console.error('Fetch tasks error:', error);
       toast.error('Erro ao buscar as tarefas do servidor.');
@@ -125,8 +134,12 @@ export function Dashboard() {
   };
 
   const handleUpdateStatus = async (taskId: string, newStatus: TaskStatus) => {
+    if (!user) return;
     try {
-      const updated = await tasksApi.update(taskId, { status: newStatus });
+      const updated = await tasksApi.update(taskId, {
+        status: newStatus,
+        assigned_to_id: newStatus === 'TODO' ? null : user.id,
+      });
       setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
       toast.success(`Tarefa movida para "${COLUMNS.find((c) => c.id === newStatus)?.label}"`);
     } catch (error) {

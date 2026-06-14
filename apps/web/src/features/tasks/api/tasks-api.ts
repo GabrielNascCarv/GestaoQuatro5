@@ -12,6 +12,11 @@ export const tasksApi = {
     return response.data;
   },
 
+  listByUser: async (userId: string): Promise<Task[]> => {
+    const response = await apiClient.get<Task[]>(`/tasks/user/${userId}`);
+    return response.data;
+  },
+
   getById: async (id: string): Promise<Task> => {
     const response = await apiClient.get<Task>(`/tasks/${id}`);
     return response.data;
