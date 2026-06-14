@@ -78,6 +78,14 @@ export function Dashboard() {
     }
   }, [user]);
 
+  const isAdmin = user?.roles?.includes('admin');
+
+  useEffect(() => {
+    if (!isAdmin && activeTab === 'dashboard') {
+      setActiveTab('tasks');
+    }
+  }, [isAdmin, activeTab]);
+
   const handleLogout = async () => {
     if (!refreshToken) {
       clearAuth();
@@ -216,30 +224,32 @@ export function Dashboard() {
             </div>
 
             {/* Navigation Tabs */}
-            <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-0.5 rounded-sm border border-slate-200">
-              <button
-                onClick={() => setActiveTab('tasks')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-semibold transition-all duration-150 cursor-pointer ${
-                  activeTab === 'tasks'
-                    ? 'bg-white text-slate-900 border border-slate-200/80 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <Kanban className="w-3.5 h-3.5" />
-                <span>Tarefas</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-semibold transition-all duration-150 cursor-pointer ${
-                  activeTab === 'dashboard'
-                    ? 'bg-white text-slate-900 border border-slate-200/80 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                <span>Dashboard</span>
-              </button>
-            </nav>
+            {isAdmin && (
+              <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-0.5 rounded-sm border border-slate-200">
+                <button
+                  onClick={() => setActiveTab('tasks')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                    activeTab === 'tasks'
+                      ? 'bg-white text-slate-900 border border-slate-200/80 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <Kanban className="w-3.5 h-3.5" />
+                  <span>Tarefas</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                    activeTab === 'dashboard'
+                      ? 'bg-white text-slate-900 border border-slate-200/80 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Dashboard</span>
+                </button>
+              </nav>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -260,26 +270,28 @@ export function Dashboard() {
       </header>
 
       {/* Subheader / Tabs for Mobile */}
-      <div className="flex md:hidden border-b border-slate-200 bg-white p-1 justify-around">
-        <button
-          onClick={() => setActiveTab('tasks')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm text-xs font-semibold cursor-pointer transition-all ${
-            activeTab === 'tasks' ? 'bg-slate-100 text-slate-900 border border-slate-200' : 'text-slate-500'
-          }`}
-        >
-          <Kanban className="w-3.5 h-3.5" />
-          <span>Tarefas</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm text-xs font-semibold cursor-pointer transition-all ${
-            activeTab === 'dashboard' ? 'bg-slate-100 text-slate-900 border border-slate-200' : 'text-slate-500'
-          }`}
-        >
-          <LayoutDashboard className="w-3.5 h-3.5" />
-          <span>Dashboard</span>
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="flex md:hidden border-b border-slate-200 bg-white p-1 justify-around">
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm text-xs font-semibold cursor-pointer transition-all ${
+              activeTab === 'tasks' ? 'bg-slate-100 text-slate-900 border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            <Kanban className="w-3.5 h-3.5" />
+            <span>Tarefas</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm text-xs font-semibold cursor-pointer transition-all ${
+              activeTab === 'dashboard' ? 'bg-slate-100 text-slate-900 border border-slate-200' : 'text-slate-500'
+            }`}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            <span>Dashboard</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
