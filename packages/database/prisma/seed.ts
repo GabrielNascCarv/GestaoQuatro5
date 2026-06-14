@@ -14,7 +14,7 @@ async function main() {
   await prisma.user.deleteMany({});
 
   // 2. Load users from Keycloak realm export if available
-  const realmPath = path.join(__dirname, '../../../../keycloak-realm.json');
+  const realmPath = path.join(__dirname, '../../../keycloak-realm.json');
   let usersToSeed: { id?: string; name: string; email: string; keycloak_id: string }[] = [];
 
   if (fs.existsSync(realmPath)) {
