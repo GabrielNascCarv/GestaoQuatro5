@@ -10,6 +10,7 @@ export class Task {
   created_by_id!: string;
   due_date?: Date | null;
   completed_at?: Date | null;
+  weekly_report_id?: string | null;
   created_at!: Date;
   updated_at!: Date;
   deleted_at?: Date | null;

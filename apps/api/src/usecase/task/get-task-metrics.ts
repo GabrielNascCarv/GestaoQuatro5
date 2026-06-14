@@ -34,7 +34,7 @@ export class GetTaskMetricsUseCase implements IGetTaskMetricsUseCase {
     };
 
     tasks.forEach((task) => {
-      if (task.status in flowStatus) {
+      if (task.weekly_report_id === null && task.status in flowStatus) {
         flowStatus[task.status as TaskStatus]++;
       }
     });
@@ -42,12 +42,12 @@ export class GetTaskMetricsUseCase implements IGetTaskMetricsUseCase {
     // 2. workload (active tasks, i.e., status is not COMPLETED)
     const workload = users.map((user) => {
       const activeTasks = tasks.filter(
-        (t) => t.assigned_to_id === user.id && t.status !== 'COMPLETED'
+        (t) => t.assigned_to_id === user.id && t.status !== 'COMPLETED' && t.weekly_report_id === null
       );
       const totalScore = activeTasks.reduce((sum, t) => sum + t.score, 0);
 
       const completedTasks = tasks.filter(
-        (t) => t.assigned_to_id === user.id && t.status === 'COMPLETED'
+        (t) => t.assigned_to_id === user.id && t.status === 'COMPLETED' && t.weekly_report_id === null
       );
       const completedTotalScore = completedTasks.reduce((sum, t) => sum + t.score, 0);
 
@@ -67,7 +67,7 @@ export class GetTaskMetricsUseCase implements IGetTaskMetricsUseCase {
 
     // 3. criticalDeadlines (non-completed tasks that are overdue or due within 48h)
     const criticalTasks = tasks.filter((task) => {
-      if (task.status === 'COMPLETED' || !task.due_date) return false;
+      if (task.status === 'COMPLETED' || !task.due_date || task.weekly_report_id !== null) return false;
       const dueDate = new Date(task.due_date);
       return dueDate <= fortyEightHoursFromNow;
     });
