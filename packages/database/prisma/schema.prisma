@@ -8,13 +8,68 @@ datasource db {
 }
 
 model User {
-  id         String    @id @default(uuid())
-  name       String
-  email      String    @unique
-  password   String
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  deleted_at DateTime?
+  id          String    @id @default(uuid())
+  name        String
+  email       String    @unique
+  password    String
+  keycloak_id String?   @unique
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  assigned_tasks Task[]   @relation("AssignedTasks")
+  created_tasks  Task[]   @relation("CreatedTasks")
 
   @@map("users")
 }
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+}
+
+model Task {
+  id             String     @id @default(uuid())
+  title          String
+  description    String?
+  score          Int
+  status         TaskStatus @default(TODO)
+  
+  assigned_to_id String?
+  assigned_to    User?      @relation("AssignedTasks", fields: [assigned_to_id], references: [id])
+
+  created_by_id  String
+  created_by     User       @relation("CreatedTasks", fields: [created_by_id], references: [id])
+
+  due_date       DateTime?
+  completed_at   DateTime?
+
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
+  deleted_at       DateTime?
+
+  weekly_report_id String?
+  weekly_report    WeeklyReport? @relation(fields: [weekly_report_id], references: [id])
+
+  @@map("tasks")
+}
+
+model WeeklyReport {
+  id              String   @id @default(uuid())
+  week_name       String
+  closed_at       DateTime @default(now())
+  total_tasks     Int
+  completed_tasks Int
+  total_score     Int
+  completed_score Int
+  tasks           Task[]
+
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+  deleted_at      DateTime?
+
+  @@map("weekly_reports")
+}
+

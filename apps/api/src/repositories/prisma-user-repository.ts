@@ -9,6 +9,7 @@ export class PrismaUserRepository implements IUserRepository {
         name: user.name,
         email: user.email,
         password: user.password,
+        keycloak_id: user.keycloak_id,
       },
     });
 
@@ -17,6 +18,7 @@ export class PrismaUserRepository implements IUserRepository {
       name: created.name,
       email: created.email,
       password: created.password,
+      keycloak_id: created.keycloak_id,
       created_at: created.created_at,
       updated_at: created.updated_at,
       deleted_at: created.deleted_at,
@@ -37,6 +39,7 @@ export class PrismaUserRepository implements IUserRepository {
       name: found.name,
       email: found.email,
       password: found.password,
+      keycloak_id: found.keycloak_id,
       created_at: found.created_at,
       updated_at: found.updated_at,
       deleted_at: found.deleted_at,
@@ -57,6 +60,7 @@ export class PrismaUserRepository implements IUserRepository {
       name: found.name,
       email: found.email,
       password: found.password,
+      keycloak_id: found.keycloak_id,
       created_at: found.created_at,
       updated_at: found.updated_at,
       deleted_at: found.deleted_at,

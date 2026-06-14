@@ -1,33 +1,33 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #FCF9F1; /* Warm Cream */
-  --color-foreground: #2B2D42; /* Charcoal Bistro */
+  --color-background: #F8FAFC; /* Slate 50 */
+  --color-foreground: #0F172A; /* Slate 900 */
   
   --color-card: #FFFFFF;
-  --color-card-foreground: #2B2D42;
+  --color-card-foreground: #0F172A;
 
-  --color-primary: #C04E2E; /* Deep Terracotta */
+  --color-primary: #4F46E5; /* Indigo 600 */
   --color-primary-foreground: #FFFFFF;
 
-  --color-secondary: #E9C46A; /* Golden Saffron */
-  --color-secondary-foreground: #2B2D42;
+  --color-secondary: #64748B; /* Slate 500 */
+  --color-secondary-foreground: #FFFFFF;
 
-  --color-muted: #F2EFE9;
-  --color-muted-foreground: #6B7280;
+  --color-muted: #F1F5F9; /* Slate 100 */
+  --color-muted-foreground: #64748B; /* Slate 500 */
 
-  --color-accent: #E9C46A;
-  --color-accent-foreground: #2B2D42;
+  --color-accent: #6366F1; /* Indigo 500 */
+  --color-accent-foreground: #FFFFFF;
 
-  --color-success: #2A9D8F;
+  --color-success: #10B981; /* Emerald 500 */
   --color-success-foreground: #FFFFFF;
 
-  --color-destructive: #ef4444;
+  --color-destructive: #EF4444; /* Red 500 */
   --color-destructive-foreground: #FFFFFF;
 
-  --color-border: #2B2D4215;
-  --color-input: #2B2D4215;
-  --color-ring: #C04E2E;
+  --color-border: #E2E8F0; /* Slate 200 */
+  --color-input: #E2E8F0;
+  --color-ring: #4F46E5;
 
   --radius-lg: 0.75rem;
   --radius-md: calc(0.75rem - 2px);
@@ -58,5 +58,23 @@
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #00000030;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scaleUp {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.15s ease-out forwards;
+  }
+
+  .animate-scale-up {
+    animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }
