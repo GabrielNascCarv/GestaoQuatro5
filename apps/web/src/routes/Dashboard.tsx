@@ -81,6 +81,10 @@ export function Dashboard() {
   const [editAssignedToId, setEditAssignedToId] = useState<string | null>(null);
   const [isSavingTask, setIsSavingTask] = useState(false);
 
+  // Delete Task State
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fetchTasks = async () => {
     if (!user) return;
     setIsLoading(true);
@@ -283,15 +287,28 @@ export function Dashboard() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Deseja realmente excluir esta tarefa? (Soft delete)')) return;
+  const handleDeleteTask = (taskId: string) => {
+    setTaskToDelete(taskId);
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    setIsDeleting(true);
     try {
-      await tasksApi.delete(taskId);
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      await tasksApi.delete(taskToDelete);
+      setTasks((prev) => prev.filter((t) => t.id !== taskToDelete));
       toast.success('Tarefa excluída com sucesso.');
+      setTaskToDelete(null);
+      if (selectedTask?.id === taskToDelete) {
+        setIsDetailOpen(false);
+        setSelectedTask(null);
+      }
+      fetchMetrics();
     } catch (error) {
       console.error('Delete task error:', error);
       toast.error('Erro ao excluir tarefa.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1426,12 +1443,69 @@ export function Dashboard() {
                       onClick={handleStartEdit}
                       className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-sm transition cursor-pointer text-center"
                     >
-                      Editar Tarefa
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (selectedTask) {
+                          handleDeleteTask(selectedTask.id);
+                        }
+                      }}
+                      className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-sm transition cursor-pointer text-center flex items-center justify-center gap-1"
+                      title="Excluir tarefa"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Excluir</span>
                     </button>
                   </div>
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* DELETE TASK CONFIRMATION MODAL */}
+      {taskToDelete && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-sm border border-slate-200 shadow-xl p-5 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Excluir Tarefa</h3>
+                <p className="text-[10px] text-slate-500">Esta ação não pode ser desfeita (será aplicado soft delete).</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Você tem certeza que deseja excluir esta tarefa? Ela será ocultada de todos os fluxos e dashboards.
+            </p>
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setTaskToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2 text-xs font-semibold border border-slate-200 rounded-sm hover:bg-slate-50 cursor-pointer transition text-center disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTask}
+                disabled={isDeleting}
+                className="flex-1 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-sm cursor-pointer transition text-center disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Excluindo...</span>
+                  </>
+                ) : (
+                  <span>Sim, Excluir</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
