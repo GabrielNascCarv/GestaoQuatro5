@@ -33,6 +33,16 @@ export class RegisterUseCase implements IRegisterUseCase {
 
     const createdUser = await this.userRepository.create(user);
 
+    // 3. Sync local database user ID back to Keycloak as a user attribute
+    try {
+      await this.authGateway.updateUserAttributes(keycloakId, {
+        db_user_id: [createdUser.id],
+      });
+    } catch (err) {
+      console.error('Failed to sync db_user_id attribute to Keycloak:', err);
+      // We don't crash registration since database user was already created, but we log the error
+    }
+
     return {
       id: createdUser.id,
       name: createdUser.name,
