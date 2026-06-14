@@ -125,8 +125,8 @@ Cada indicador foi projetado para munir o Ricardo de dados para tomada de decis�
    * **O que é**: Compara a soma da pontuação das tarefas concluídas no ciclo ativo com a pontuação concluída no último relatório fechado (semana anterior), exibindo a tendência de crescimento ou queda (%).
    * **Decisão do Ricardo**: Ricardo utiliza a velocidade para planejar a capacidade do time para a próxima semana. Se a velocidade estiver em queda constante, ele pode decidir rever processos ou diminuir a carga de escopo da próxima Sprint.
 4. **Status do Fluxo (Flow Status)**:
-   * **O que é**: Contagem total de tarefas por coluna do Kanban (Total, Ativas, Concluídas, Críticas).
-   * **Decisão do Ricardo**: Ajuda a identificar gargalos no fluxo de trabalho. Se há um acúmulo excessivo em "Em Revisão", Ricardo decide intervir junto aos revisores para destravar as homologações e acelerar as entregas.
+   * **O que é**: Representado de forma quantitativa pelos cards de resumo no topo do Painel (*Total de Tarefas*, *Pontos Ativos*, *Prazos Críticos* e *Concluídas*) e visualmente pelas colunas do quadro Kanban (*A Fazer*, *Em Desenvolvimento*, *Em Revisão* e *Concluído*).
+   * **Decisão do Ricardo**: Ajuda a identificar gargalos no fluxo de trabalho. Se há um acúmulo excessivo de tarefas na coluna "Em Revisão" do Kanban, ou se a proporção de tarefas ativas versus concluídas nos cards do Painel estiver desbalanceada, Ricardo decide intervir na etapa específica (ex: homologação) para destravar as entregas do time.
 
 ---
 
