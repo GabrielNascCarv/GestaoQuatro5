@@ -46,10 +46,30 @@ model Task {
   due_date       DateTime?
   completed_at   DateTime?
 
-  created_at     DateTime   @default(now())
-  updated_at     DateTime   @updatedAt
-  deleted_at     DateTime?
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
+  deleted_at       DateTime?
+
+  weekly_report_id String?
+  weekly_report    WeeklyReport? @relation(fields: [weekly_report_id], references: [id])
 
   @@map("tasks")
+}
+
+model WeeklyReport {
+  id              String   @id @default(uuid())
+  week_name       String
+  closed_at       DateTime @default(now())
+  total_tasks     Int
+  completed_tasks Int
+  total_score     Int
+  completed_score Int
+  tasks           Task[]
+
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+  deleted_at      DateTime?
+
+  @@map("weekly_reports")
 }
 

@@ -56,6 +56,14 @@ export function Dashboard() {
   const [metrics, setMetrics] = useState<any | null>(null);
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
 
+  // Weekly Reports State
+  const [weeklyReports, setWeeklyReports] = useState<any[]>([]);
+  const [selectedReportId, setSelectedReportId] = useState<string>('current');
+  const [selectedReportDetail, setSelectedReportDetail] = useState<any | null>(null);
+  const [isReportsLoading, setIsReportsLoading] = useState(false);
+  const [isClosingWeek, setIsClosingWeek] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
   // Drag and Drop State
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
@@ -94,6 +102,59 @@ export function Dashboard() {
     }
   };
 
+  const fetchWeeklyReports = async () => {
+    setIsReportsLoading(true);
+    try {
+      const reports = await tasksApi.listWeeklyReports();
+      setWeeklyReports(reports);
+    } catch (error) {
+      console.error('Fetch weekly reports error:', error);
+      toast.error('Erro ao buscar o histórico de fechamentos.');
+    } finally {
+      setIsReportsLoading(false);
+    }
+  };
+
+  const fetchReportDetail = async (id: string) => {
+    if (id === 'current') {
+      setSelectedReportDetail(null);
+      fetchMetrics();
+      return;
+    }
+    setIsReportsLoading(true);
+    try {
+      const detail = await tasksApi.getWeeklyReport(id);
+      setSelectedReportDetail(detail);
+    } catch (error) {
+      console.error('Fetch report detail error:', error);
+      toast.error('Erro ao obter detalhes do relatório semanal.');
+    } finally {
+      setIsReportsLoading(false);
+    }
+  };
+
+  const confirmCloseWeek = async () => {
+    setIsClosingWeek(true);
+    setShowCloseConfirm(false);
+    try {
+      console.log('Sending closeWeek request to backend...');
+      const report = await tasksApi.closeWeek();
+      console.log('closeWeek response:', report);
+      toast.success(`Semana fechada com sucesso: ${report.week_name}`);
+      await Promise.all([
+        fetchTasks(),
+        fetchMetrics(),
+        fetchWeeklyReports(),
+      ]);
+      setSelectedReportId('current');
+    } catch (error: any) {
+      console.error('Close week error:', error);
+      toast.error(error.response?.data?.message || 'Erro ao realizar o fechamento da semana.');
+    } finally {
+      setIsClosingWeek(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchTasks();
@@ -105,8 +166,17 @@ export function Dashboard() {
   useEffect(() => {
     if (activeTab === 'dashboard' && isAdmin) {
       fetchMetrics();
+      fetchWeeklyReports();
+      setSelectedReportId('current');
+      setSelectedReportDetail(null);
     }
   }, [activeTab, isAdmin]);
+
+  useEffect(() => {
+    if (activeTab === 'dashboard' && isAdmin && selectedReportId) {
+      fetchReportDetail(selectedReportId);
+    }
+  }, [selectedReportId, activeTab, isAdmin]);
 
   useEffect(() => {
     if (!isAdmin && activeTab === 'dashboard') {
@@ -326,7 +396,7 @@ export function Dashboard() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'dashboard' ? (
-          isMetricsLoading && !metrics ? (
+          (isMetricsLoading && !metrics) || isReportsLoading ? (
             <div className="py-20 flex flex-col items-center justify-center gap-3">
               <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" />
               <span className="text-xs text-slate-500 font-medium animate-pulse">Carregando indicadores...</span>
@@ -340,14 +410,45 @@ export function Dashboard() {
                     Visão geral baseada em dados e indicadores para acompanhamento das metas do time.
                   </p>
                 </div>
-                <button
-                  onClick={fetchMetrics}
-                  disabled={isMetricsLoading}
-                  className="self-start sm:self-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-sm shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <Clock className={`w-3.5 h-3.5 ${isMetricsLoading ? 'animate-spin' : ''}`} />
-                  <span>{isMetricsLoading ? 'Atualizando...' : 'Atualizar Dados'}</span>
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={selectedReportId}
+                    onChange={(e) => setSelectedReportId(e.target.value)}
+                    className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-sm shadow-xs focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+                  >
+                    <option value="current">Semana Atual (Ativa)</option>
+                    {weeklyReports.map((report) => (
+                      <option key={report.id} value={report.id}>
+                        {report.week_name} ({new Date(report.closed_at).toLocaleDateString('pt-BR')})
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedReportId === 'current' && (
+                    <button
+                      onClick={() => setShowCloseConfirm(true)}
+                      disabled={isClosingWeek || (metrics && metrics.flowStatus.COMPLETED === 0)}
+                      title={metrics && metrics.flowStatus.COMPLETED === 0 ? "Nenhuma tarefa concluída para fechar a semana" : "Fechar semana e consolidar resultados"}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-sm shadow-xs transition cursor-pointer flex items-center gap-1.5 text-white ${
+                        metrics && metrics.flowStatus.COMPLETED === 0
+                          ? 'bg-slate-300 cursor-not-allowed'
+                          : 'bg-slate-800 hover:bg-slate-700'
+                      }`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{isClosingWeek ? 'Fechando...' : 'Fechar Semana'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => selectedReportId === 'current' ? fetchMetrics() : fetchReportDetail(selectedReportId)}
+                    disabled={isMetricsLoading || isReportsLoading}
+                    className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-sm shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Clock className={`w-3.5 h-3.5 ${(isMetricsLoading || isReportsLoading) ? 'animate-spin' : ''}`} />
+                    <span>{(isMetricsLoading || isReportsLoading) ? 'Atualizando...' : 'Atualizar'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Quick Stats Grid */}
@@ -360,32 +461,38 @@ export function Dashboard() {
                   <div>
                     <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Total de Tarefas</span>
                     <span className="text-lg font-bold text-slate-800">
-                      {metrics ? (metrics.flowStatus.TODO + metrics.flowStatus.IN_PROGRESS + metrics.flowStatus.IN_REVIEW + metrics.flowStatus.COMPLETED) : totalTasks}
+                      {selectedReportDetail ? selectedReportDetail.total_tasks : (metrics ? (metrics.flowStatus.TODO + metrics.flowStatus.IN_PROGRESS + metrics.flowStatus.IN_REVIEW + metrics.flowStatus.COMPLETED) : totalTasks)}
                     </span>
                   </div>
                 </div>
 
-                {/* Active Score Card */}
+                {/* Total Score / Active Score Card */}
                 <div className="bg-white p-4.5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-3.5">
                   <div className="w-9 h-9 rounded-sm bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
                     <Award className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Pontos Ativos</span>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
+                      {selectedReportDetail ? 'Pontuação Total' : 'Pontos Ativos'}
+                    </span>
                     <span className="text-lg font-bold text-slate-800">
-                      {metrics ? metrics.workload.reduce((acc: number, w: any) => acc + w.totalScore, 0) : tasks.filter(t => t.status !== 'COMPLETED').reduce((acc, t) => acc + t.score, 0)} <span className="text-[10px] font-normal text-slate-500">pts</span>
+                      {selectedReportDetail ? selectedReportDetail.total_score : (metrics ? metrics.workload.reduce((acc: number, w: any) => acc + w.totalScore, 0) : tasks.filter(t => t.status !== 'COMPLETED').reduce((acc, t) => acc + t.score, 0))} <span className="text-[10px] font-normal text-slate-500">pts</span>
                     </span>
                   </div>
                 </div>
 
-                {/* Deadlines At Risk Card */}
+                {/* Deadlines At Risk / Completed Score Card */}
                 <div className="bg-white p-4.5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-3.5">
                   <div className="w-9 h-9 rounded-sm bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-center shrink-0">
                     <AlertTriangle className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Prazos Críticos</span>
-                    <span className="text-lg font-bold text-slate-800">{metrics?.criticalDeadlines?.length ?? 0}</span>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
+                      {selectedReportDetail ? 'Pontos Entregues' : 'Prazos Críticos'}
+                    </span>
+                    <span className="text-lg font-bold text-slate-800">
+                      {selectedReportDetail ? `${selectedReportDetail.completed_score} pts` : (metrics?.criticalDeadlines?.length ?? 0)}
+                    </span>
                   </div>
                 </div>
 
@@ -397,219 +504,280 @@ export function Dashboard() {
                   <div>
                     <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Concluídas</span>
                     <span className="text-lg font-bold text-slate-800">
-                      {metrics ? metrics.flowStatus.COMPLETED : completedCount}
+                      {selectedReportDetail ? selectedReportDetail.completed_tasks : (metrics ? metrics.flowStatus.COMPLETED : completedCount)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Main Grid: Workload Balancer & Side Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* WORKLOAD BALANCER COLUMN */}
-                <div className="bg-white border border-slate-200 rounded-sm lg:col-span-2 flex flex-col">
+              {selectedReportDetail ? (
+                /* HISTORICAL REPORT VIEW */
+                <div className="bg-white border border-slate-200 rounded-sm">
                   <div className="p-4 border-b border-slate-200 bg-slate-50/50">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Carga de Trabalho do Time</h2>
-                    <p className="text-[10px] text-slate-400">Balanceamento de tarefas e pontos por colaborador ativo.</p>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Relatório de Tarefas da Semana</h2>
+                    <p className="text-[10px] text-slate-400">Detalhamento de todas as tarefas concluídas e arquivadas nesta semana.</p>
                   </div>
-
-                  <div className="p-4 flex-1 space-y-4">
-                    {metrics?.workload && metrics.workload.length > 0 ? (
-                      metrics.workload.map((member: any) => {
-                        const maxCap = 15;
-                        const activeScore = member.totalScore;
-                        const percentage = Math.min((activeScore / maxCap) * 100, 100);
-                        
-                        let statusColor = 'bg-slate-500';
-                        let statusLabel = 'Ocioso';
-                        let statusBadge = 'bg-slate-100 text-slate-600 border-slate-200';
-                        
-                        if (activeScore > 15) {
-                          statusColor = 'bg-rose-500';
-                          statusLabel = 'Sobrecarregado';
-                          statusBadge = 'bg-rose-50 text-rose-700 border-rose-200';
-                        } else if (activeScore >= 11) {
-                          statusColor = 'bg-amber-500';
-                          statusLabel = 'Alerta';
-                          statusBadge = 'bg-amber-50 text-amber-700 border-amber-200';
-                        } else if (activeScore >= 1) {
-                          statusColor = 'bg-emerald-500';
-                          statusLabel = 'Ideal';
-                          statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                        }
-
-                        return (
-                          <div key={member.userId} className="p-3 border border-slate-100 rounded-sm hover:bg-slate-50/50 transition duration-150 space-y-2.5">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                              <div>
-                                <span className="text-xs font-bold text-slate-800 block">{member.userName}</span>
-                                <span className="text-[10px] text-slate-400">{member.userEmail}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm border ${statusBadge}`}>
-                                  {statusLabel}
-                                </span>
-                                <span className="text-[11px] font-bold text-slate-700">
-                                  {activeScore} <span className="text-[9px] font-normal text-slate-400">pts ativos</span>
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Capacity bar */}
-                            <div className="w-full bg-slate-100 h-1.5 rounded-sm overflow-hidden">
-                              <div className={`h-full ${statusColor} transition-all duration-300`} style={{ width: `${percentage}%` }} />
-                            </div>
-
-                            {/* Additional details */}
-                            <div className="flex items-center gap-4 text-[10px] text-slate-500 pt-0.5">
-                              <div>
-                                Tarefas ativas: <span className="font-bold text-slate-700">{member.taskCount}</span>
-                              </div>
-                              <div className="w-1 h-1 rounded-full bg-slate-300" />
-                              <div>
-                                Concluídas: <span className="font-bold text-slate-700">{member.completedTaskCount}</span>
-                              </div>
-                              <div className="w-1 h-1 rounded-full bg-slate-300" />
-                              <div>
-                                Entregue: <span className="font-bold text-slate-700">{member.completedTotalScore} pts</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="py-12 text-center text-xs text-slate-400">Nenhum colaborador encontrado.</div>
-                    )}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                          <th className="p-4">Tarefa</th>
+                          <th className="p-4">Pontuação</th>
+                          <th className="p-4">Responsável</th>
+                          <th className="p-4">Data de Conclusão</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs">
+                        {selectedReportDetail.tasks && selectedReportDetail.tasks.length > 0 ? (
+                          selectedReportDetail.tasks.map((task: any) => (
+                            <tr key={task.id} className="hover:bg-slate-50/40 transition">
+                              <td className="p-4 font-semibold text-slate-800">
+                                {task.title}
+                              </td>
+                              <td className="p-4 text-slate-600 font-medium">
+                                {task.score} pts
+                              </td>
+                              <td className="p-4">
+                                {task.assigned_to ? (
+                                  <div>
+                                    <span className="font-semibold text-slate-700 block">{task.assigned_to.name}</span>
+                                    <span className="text-[10px] text-slate-400">{task.assigned_to.email}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 italic">Não designado</span>
+                                )}
+                              </td>
+                              <td className="p-4 text-slate-500">
+                                {task.completed_at ? new Date(task.completed_at).toLocaleDateString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 'Não informado'}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="p-8 text-center text-slate-400 italic">
+                              Nenhuma tarefa concluída nesta semana.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-
-                {/* RIGHT SIDE DETAILS: VELOCITY & DEADLINES */}
-                <div className="space-y-6">
+              ) : (
+                /* Main Grid: Workload Balancer & Side Cards */
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
-                  {/* VELOCITY METRIC CARD */}
-                  <div className="bg-white border border-slate-200 rounded-sm p-4 space-y-4">
-                    <div>
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Velocidade Semanal</h2>
-                      <p className="text-[10px] text-slate-400">Pontuação entregue nos últimos 7 dias vs semana anterior.</p>
+                  {/* WORKLOAD BALANCER COLUMN */}
+                  <div className="bg-white border border-slate-200 rounded-sm lg:col-span-2 flex flex-col">
+                    <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Carga de Trabalho do Time</h2>
+                      <p className="text-[10px] text-slate-400">Balanceamento de tarefas e pontos por colaborador ativo.</p>
                     </div>
 
-                    {metrics?.weeklyVelocity ? (() => {
-                      const current = metrics.weeklyVelocity.currentWeekScore;
-                      const previous = metrics.weeklyVelocity.previousWeekScore;
-                      let diffPercent = 0;
-                      let isTrendUp = true;
-                      
-                      if (previous > 0) {
-                        diffPercent = Math.round(((current - previous) / previous) * 100);
-                        isTrendUp = current >= previous;
-                      } else if (current > 0) {
-                        diffPercent = 100;
-                        isTrendUp = true;
-                      } else {
-                        diffPercent = 0;
-                        isTrendUp = true;
-                      }
-
-                      return (
-                        <div className="space-y-4">
-                          <div className="flex items-end justify-between">
-                            <div>
-                              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400 block">Velocidade Atual</span>
-                              <span className="text-2xl font-black text-slate-800">{current} <span className="text-xs font-bold text-slate-400">pts</span></span>
-                            </div>
-                            
-                            {diffPercent !== 0 ? (
-                              <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-sm text-xs font-bold ${
-                                isTrendUp ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
-                              }`}>
-                                {isTrendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                <span>{isTrendUp ? '+' : ''}{diffPercent}%</span>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-sm">Sem variação</span>
-                            )}
-                          </div>
-
-                          {/* Comparison Visualizer */}
-                          <div className="space-y-2 pt-1">
-                            <div className="space-y-1 text-[10px] text-slate-500">
-                              <div className="flex justify-between">
-                                <span>Esta semana</span>
-                                <span className="font-bold text-slate-700">{current} pts</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-2 rounded-xs overflow-hidden">
-                                <div className="h-full bg-emerald-500" style={{ width: `${Math.min(current * 4, 100)}%` }} />
-                              </div>
-                            </div>
-
-                            <div className="space-y-1 text-[10px] text-slate-500">
-                              <div className="flex justify-between">
-                                <span>Semana anterior</span>
-                                <span className="font-bold text-slate-700">{previous} pts</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-2 rounded-xs overflow-hidden">
-                                <div className="h-full bg-slate-400" style={{ width: `${Math.min(previous * 4, 100)}%` }} />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })() : (
-                      <div className="text-center text-xs text-slate-400">Calculando velocidade...</div>
-                    )}
-                  </div>
-
-                  {/* CRITICAL DEADLINES CARD */}
-                  <div className="bg-white border border-slate-200 rounded-sm p-4 space-y-4">
-                    <div>
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Prazos em Risco</h2>
-                      <p className="text-[10px] text-slate-400">Tarefas não concluídas que venceram ou vencem em 48h.</p>
-                    </div>
-
-                    <div className="space-y-2.5 max-h-[350px] overflow-y-auto custom-scrollbar">
-                      {metrics?.criticalDeadlines && metrics.criticalDeadlines.length > 0 ? (
-                        metrics.criticalDeadlines.map((task: any) => {
-                          const dueDateObj = new Date(task.due_date);
-                          const isOverdue = dueDateObj < new Date();
+                    <div className="p-4 flex-1 space-y-4">
+                      {metrics?.workload && metrics.workload.length > 0 ? (
+                        metrics.workload.map((member: any) => {
+                          const maxCap = 15;
+                          const activeScore = member.totalScore;
+                          const percentage = Math.min((activeScore / maxCap) * 100, 100);
                           
+                          let statusColor = 'bg-slate-500';
+                          let statusLabel = 'Ocioso';
+                          let statusBadge = 'bg-slate-100 text-slate-600 border-slate-200';
+                          
+                          if (activeScore > 15) {
+                            statusColor = 'bg-rose-500';
+                            statusLabel = 'Sobrecarregado';
+                            statusBadge = 'bg-rose-50 text-rose-700 border-rose-200';
+                          } else if (activeScore >= 11) {
+                            statusColor = 'bg-amber-500';
+                            statusLabel = 'Alerta';
+                            statusBadge = 'bg-amber-50 text-amber-700 border-amber-200';
+                          } else if (activeScore >= 1) {
+                            statusColor = 'bg-emerald-500';
+                            statusLabel = 'Ideal';
+                            statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          }
+
                           return (
-                            <div key={task.id} className="p-2.5 border border-rose-100 bg-rose-50/20 rounded-sm space-y-1">
-                              <div className="flex justify-between gap-1.5">
-                                <span className="text-[11px] font-bold text-slate-800 break-words leading-tight flex-1">{task.title}</span>
-                                <span className="bg-white border border-rose-200 text-rose-800 text-[8px] font-bold px-1 rounded-sm shrink-0 self-start">{task.score} pts</span>
-                              </div>
-                              
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-slate-500">
-                                <div className="flex items-center gap-0.5 font-bold text-rose-700">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>Vence: {dueDateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
-                                </div>
-                                <span className="text-slate-300">•</span>
+                            <div key={member.userId} className="p-3 border border-slate-100 rounded-sm hover:bg-slate-50/50 transition duration-150 space-y-2.5">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                                 <div>
-                                  Colaborador: <span className="font-semibold text-slate-600">{task.assigned_to?.name ?? 'Não atribuído'}</span>
+                                  <span className="text-xs font-bold text-slate-800 block">{member.userName}</span>
+                                  <span className="text-[10px] text-slate-400">{member.userEmail}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm border ${statusBadge}`}>
+                                    {statusLabel}
+                                  </span>
+                                  <span className="text-[11px] font-bold text-slate-700">
+                                    {activeScore} <span className="text-[9px] font-normal text-slate-400">pts ativos</span>
+                                  </span>
                                 </div>
                               </div>
 
-                              {isOverdue && (
-                                <div className="text-[8px] uppercase tracking-wider font-extrabold text-rose-600">
-                                  Tarefa Atrasada!
+                              {/* Capacity bar */}
+                              <div className="w-full bg-slate-100 h-1.5 rounded-sm overflow-hidden">
+                                <div className={`h-full ${statusColor} transition-all duration-300`} style={{ width: `${percentage}%` }} />
+                              </div>
+
+                              {/* Additional details */}
+                              <div className="flex items-center gap-4 text-[10px] text-slate-500 pt-0.5">
+                                <div>
+                                  Tarefas ativas: <span className="font-bold text-slate-700">{member.taskCount}</span>
                                 </div>
-                              )}
+                                <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                <div>
+                                  Concluídas: <span className="font-bold text-slate-700">{member.completedTaskCount}</span>
+                                </div>
+                                <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                <div>
+                                  Entregue: <span className="font-bold text-slate-700">{member.completedTotalScore} pts</span>
+                                </div>
+                              </div>
                             </div>
                           );
                         })
                       ) : (
-                        <div className="py-6 text-center border border-dashed border-emerald-200 bg-emerald-50/20 rounded-sm flex flex-col items-center justify-center gap-1">
-                          <CheckCircle className="w-5 h-5 text-emerald-500" />
-                          <span className="text-[10px] text-emerald-800 font-bold">Excelente!</span>
-                          <span className="text-[9px] text-emerald-600">Nenhum prazo crítico em risco.</span>
-                        </div>
+                        <div className="py-12 text-center text-xs text-slate-400">Nenhum colaborador encontrado.</div>
                       )}
                     </div>
                   </div>
 
+                  {/* RIGHT SIDE DETAILS: VELOCITY & DEADLINES */}
+                  <div className="space-y-6">
+                    
+                    {/* VELOCITY METRIC CARD */}
+                    <div className="bg-white border border-slate-200 rounded-sm p-4 space-y-4">
+                      <div>
+                        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Velocidade Semanal</h2>
+                        <p className="text-[10px] text-slate-400">Pontuação entregue nos últimos 7 dias vs semana anterior.</p>
+                      </div>
+
+                      {metrics?.weeklyVelocity ? (() => {
+                        const current = metrics.weeklyVelocity.currentWeekScore;
+                        const previous = metrics.weeklyVelocity.previousWeekScore;
+                        let diffPercent = 0;
+                        let isTrendUp = true;
+                        
+                        if (previous > 0) {
+                          diffPercent = Math.round(((current - previous) / previous) * 100);
+                          isTrendUp = current >= previous;
+                        } else if (current > 0) {
+                          diffPercent = 100;
+                          isTrendUp = true;
+                        } else {
+                          diffPercent = 0;
+                          isTrendUp = true;
+                        }
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="flex items-end justify-between">
+                              <div>
+                                <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400 block">Velocidade Atual</span>
+                                <span className="text-2xl font-black text-slate-800">{current} <span className="text-xs font-bold text-slate-400">pts</span></span>
+                              </div>
+                              
+                              {diffPercent !== 0 ? (
+                                <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-sm text-xs font-bold ${
+                                  isTrendUp ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                  {isTrendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                  <span>{isTrendUp ? '+' : ''}{diffPercent}%</span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-sm">Sem variação</span>
+                              )}
+                            </div>
+
+                            {/* Comparison Visualizer */}
+                            <div className="space-y-2 pt-1">
+                              <div className="space-y-1 text-[10px] text-slate-500">
+                                <div className="flex justify-between">
+                                  <span>Esta semana</span>
+                                  <span className="font-bold text-slate-700">{current} pts</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-2 rounded-xs overflow-hidden">
+                                  <div className="h-full bg-emerald-500" style={{ width: `${Math.min(current * 4, 100)}%` }} />
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 text-[10px] text-slate-500">
+                                <div className="flex justify-between">
+                                  <span>Semana anterior</span>
+                                  <span className="font-bold text-slate-700">{previous} pts</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-2 rounded-xs overflow-hidden">
+                                  <div className="h-full bg-slate-400" style={{ width: `${Math.min(previous * 4, 100)}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })() : (
+                        <div className="text-center text-xs text-slate-400">Calculando velocidade...</div>
+                      )}
+                    </div>
+
+                    {/* CRITICAL DEADLINES CARD */}
+                    <div className="bg-white border border-slate-200 rounded-sm p-4 space-y-4">
+                      <div>
+                        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Prazos em Risco</h2>
+                        <p className="text-[10px] text-slate-400">Tarefas não concluídas que venceram ou vencem em 48h.</p>
+                      </div>
+
+                      <div className="space-y-2.5 max-h-[350px] overflow-y-auto custom-scrollbar">
+                        {metrics?.criticalDeadlines && metrics.criticalDeadlines.length > 0 ? (
+                          metrics.criticalDeadlines.map((task: any) => {
+                            const dueDateObj = new Date(task.due_date);
+                            const isOverdue = dueDateObj < new Date();
+                            
+                            return (
+                              <div key={task.id} className="p-2.5 border border-rose-100 bg-rose-50/20 rounded-sm space-y-1">
+                                <div className="flex justify-between gap-1.5">
+                                  <span className="text-[11px] font-bold text-slate-800 break-words leading-tight flex-1">{task.title}</span>
+                                  <span className="bg-white border border-rose-200 text-rose-800 text-[8px] font-bold px-1 rounded-sm shrink-0 self-start">{task.score} pts</span>
+                                </div>
+                                
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-slate-500">
+                                  <div className="flex items-center gap-0.5 font-bold text-rose-700">
+                                    <Calendar className="w-3 h-3" />
+                                    <span>Vence: {dueDateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
+                                  </div>
+                                  <span className="text-slate-300">•</span>
+                                  <div>
+                                    Colaborador: <span className="font-semibold text-slate-600">{task.assigned_to?.name ?? 'Não atribuído'}</span>
+                                  </div>
+                                </div>
+
+                                {isOverdue && (
+                                  <div className="text-[8px] uppercase tracking-wider font-extrabold text-rose-600">
+                                    Tarefa Atrasada!
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="py-6 text-center border border-dashed border-emerald-200 bg-emerald-50/20 rounded-sm flex flex-col items-center justify-center gap-1">
+                            <CheckCircle className="w-5 h-5 text-emerald-500" />
+                            <span className="text-[10px] text-emerald-800 font-bold">Excelente!</span>
+                            <span className="text-[9px] text-emerald-600">Nenhum prazo crítico em risco.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )
         ) : (
@@ -868,6 +1036,53 @@ export function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Close Week Confirmation Modal */}
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-md shadow-xl border border-slate-100 max-w-sm w-full mx-4 p-5 space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-50 rounded-full text-amber-600">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900">Fechar Ciclo Semanal</h3>
+                <p className="text-[10px] text-slate-500">Esta ação é irreversível.</p>
+              </div>
+            </div>
+            
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Tem certeza de que deseja fechar a semana atual? Todas as tarefas na coluna <strong>Concluído</strong> serão consolidadas no relatório histórico e arquivadas.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowCloseConfirm(false)}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-sm transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmCloseWeek}
+                disabled={isClosingWeek}
+                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-sm transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                {isClosingWeek ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Fechando...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Sim, Fechar Semana</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

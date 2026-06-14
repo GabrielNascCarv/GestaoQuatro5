@@ -1,10 +1,10 @@
 import { GetTaskMetricsUseCase } from '../../../usecase/task/get-task-metrics';
-import { PrismaTaskRepository } from '../../../repositories/prisma-task-repository';
+import { PrismaWeeklyReportRepository } from '../../../repositories/prisma-weekly-report-repository';
 
 export class GetTaskMetricsUseCaseFactory {
   static create() {
-    const taskRepository = new PrismaTaskRepository();
-    const getTaskMetricsUseCase = new GetTaskMetricsUseCase(taskRepository);
+    const weeklyReportRepository = new PrismaWeeklyReportRepository();
+    const getTaskMetricsUseCase = new GetTaskMetricsUseCase(weeklyReportRepository);
     return getTaskMetricsUseCase;
   }
 }

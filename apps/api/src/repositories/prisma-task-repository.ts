@@ -14,6 +14,7 @@ export class PrismaTaskRepository implements ITaskRepository {
         created_by_id: task.created_by_id,
         due_date: task.due_date,
         completed_at: task.completed_at,
+        weekly_report_id: task.weekly_report_id,
       },
     });
 
@@ -27,6 +28,7 @@ export class PrismaTaskRepository implements ITaskRepository {
       created_by_id: created.created_by_id,
       due_date: created.due_date,
       completed_at: created.completed_at,
+      weekly_report_id: created.weekly_report_id,
       created_at: created.created_at,
       updated_at: created.updated_at,
       deleted_at: created.deleted_at,
@@ -52,6 +54,7 @@ export class PrismaTaskRepository implements ITaskRepository {
       created_by_id: found.created_by_id,
       due_date: found.due_date,
       completed_at: found.completed_at,
+      weekly_report_id: found.weekly_report_id,
       created_at: found.created_at,
       updated_at: found.updated_at,
       deleted_at: found.deleted_at,
@@ -65,6 +68,7 @@ export class PrismaTaskRepository implements ITaskRepository {
       where: {
         deleted_at: null,
         assigned_to_id: null,
+        weekly_report_id: null,
       },
       orderBy: { created_at: 'desc' },
     });
@@ -81,6 +85,7 @@ export class PrismaTaskRepository implements ITaskRepository {
           created_by_id: item.created_by_id,
           due_date: item.due_date,
           completed_at: item.completed_at,
+          weekly_report_id: item.weekly_report_id,
           created_at: item.created_at,
           updated_at: item.updated_at,
           deleted_at: item.deleted_at,
@@ -95,6 +100,7 @@ export class PrismaTaskRepository implements ITaskRepository {
       where: {
         deleted_at: null,
         assigned_to_id: userId,
+        weekly_report_id: null,
       },
       orderBy: { created_at: 'desc' },
     });
@@ -111,6 +117,7 @@ export class PrismaTaskRepository implements ITaskRepository {
           created_by_id: item.created_by_id,
           due_date: item.due_date,
           completed_at: item.completed_at,
+          weekly_report_id: item.weekly_report_id,
           created_at: item.created_at,
           updated_at: item.updated_at,
           deleted_at: item.deleted_at,
@@ -131,6 +138,7 @@ export class PrismaTaskRepository implements ITaskRepository {
         assigned_to_id: task.assigned_to_id,
         due_date: task.due_date,
         completed_at: task.completed_at,
+        weekly_report_id: task.weekly_report_id,
       },
     });
 
@@ -144,12 +152,44 @@ export class PrismaTaskRepository implements ITaskRepository {
       created_by_id: updated.created_by_id,
       due_date: updated.due_date,
       completed_at: updated.completed_at,
+      weekly_report_id: updated.weekly_report_id,
       created_at: updated.created_at,
       updated_at: updated.updated_at,
       deleted_at: updated.deleted_at,
     });
 
     return taskUpdated;
+  }
+
+  async findActive(): Promise<Task[]> {
+    const list = await prisma.task.findMany({
+      where: {
+        deleted_at: null,
+        weekly_report_id: null,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const listTasks = list.map(
+      (item) =>
+        new Task({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          score: item.score,
+          status: item.status as TaskStatus,
+          assigned_to_id: item.assigned_to_id,
+          created_by_id: item.created_by_id,
+          due_date: item.due_date,
+          completed_at: item.completed_at,
+          weekly_report_id: item.weekly_report_id,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          deleted_at: item.deleted_at,
+        })
+    );
+
+    return listTasks;
   }
 
   async delete(id: string): Promise<void> {

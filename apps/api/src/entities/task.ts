@@ -1,3 +1,5 @@
+import { User } from './user';
+
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'COMPLETED';
 
 export class Task {
@@ -10,6 +12,8 @@ export class Task {
   created_by_id!: string;
   due_date?: Date | null;
   completed_at?: Date | null;
+  weekly_report_id?: string | null;
+  assigned_to?: Pick<User, 'id' | 'name' | 'email'> | null;
   created_at!: Date;
   updated_at!: Date;
   deleted_at?: Date | null;
