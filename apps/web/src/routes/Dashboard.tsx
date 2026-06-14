@@ -71,6 +71,16 @@ export function Dashboard() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
 
+  // Edit Task State
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editScore, setEditScore] = useState<number | ''>(1);
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editStatus, setEditStatus] = useState<TaskStatus>('TODO');
+  const [editAssignedToId, setEditAssignedToId] = useState<string | null>(null);
+  const [isSavingTask, setIsSavingTask] = useState(false);
+
   const fetchTasks = async () => {
     if (!user) return;
     setIsLoading(true);
@@ -309,6 +319,57 @@ export function Dashboard() {
       setIsDetailOpen(false);
     } finally {
       setIsDetailLoading(false);
+    }
+  };
+
+  const handleStartEdit = () => {
+    if (!selectedTask) return;
+    setEditTitle(selectedTask.title);
+    setEditDescription(selectedTask.description || '');
+    setEditScore(selectedTask.score);
+    setEditDueDate(selectedTask.due_date ? new Date(selectedTask.due_date).toISOString().split('T')[0] : '');
+    setEditStatus(selectedTask.status);
+    setEditAssignedToId(selectedTask.assigned_to_id);
+    setIsEditingTask(true);
+  };
+
+  const handleSaveTaskEdit = async () => {
+    if (!selectedTask) return;
+    if (!editTitle.trim()) {
+      toast.error('O título da tarefa é obrigatório.');
+      return;
+    }
+    const parsedScore = editScore === '' ? 0 : Number(editScore);
+    if (parsedScore < 0) {
+      toast.error('A pontuação não pode ser negativa.');
+      return;
+    }
+    setIsSavingTask(true);
+    try {
+      const updated = await tasksApi.update(selectedTask.id, {
+        title: editTitle,
+        description: editDescription || null,
+        score: parsedScore,
+        status: editStatus,
+        assigned_to_id: editAssignedToId,
+        due_date: editDueDate ? new Date(editDueDate).toISOString() : null,
+      });
+
+      // Update the local tasks list
+      setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? updated : t)));
+
+      // Update the selected task details
+      setSelectedTask(updated);
+      setIsEditingTask(false);
+      toast.success('Tarefa atualizada com sucesso!');
+
+      // Refresh metrics in background to keep dashboard in sync
+      fetchMetrics();
+    } catch (error: any) {
+      console.error('Update task error:', error);
+      toast.error(error.response?.data?.message || 'Erro ao atualizar tarefa.');
+    } finally {
+      setIsSavingTask(false);
     }
   };
 
@@ -1140,11 +1201,14 @@ export function Dashboard() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-sm border border-slate-200 shadow-xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
-              <h2 className="text-sm font-bold text-slate-800">Detalhes da Tarefa</h2>
+              <h2 className="text-sm font-bold text-slate-800">
+                {isEditingTask ? 'Editar Tarefa' : 'Detalhes da Tarefa'}
+              </h2>
               <button
                 onClick={() => {
                   setIsDetailOpen(false);
                   setSelectedTask(null);
+                  setIsEditingTask(false);
                 }}
                 className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition cursor-pointer text-lg font-bold"
               >
@@ -1156,6 +1220,106 @@ export function Dashboard() {
               <div className="py-12 flex flex-col items-center justify-center gap-2">
                 <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" />
                 <span className="text-[10px] text-slate-400 font-medium">Carregando detalhes...</span>
+              </div>
+            ) : isEditingTask ? (
+              <div className="space-y-3.5 text-xs text-slate-700">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Título</label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    placeholder="Título da tarefa..."
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Descrição</label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition resize-none"
+                    placeholder="Descrição da tarefa..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Status</label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value as TaskStatus)}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    >
+                      {COLUMNS.map((col) => (
+                        <option key={col.id} value={col.id}>{col.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pontuação</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editScore}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditScore(val === '' ? '' : Number(val));
+                      }}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Responsável</label>
+                    <select
+                      value={editAssignedToId || ''}
+                      onChange={(e) => setEditAssignedToId(e.target.value || null)}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    >
+                      <option value="">Não atribuída</option>
+                      {metrics?.workload?.map((w: any) => (
+                        <option key={w.userId} value={w.userId}>{w.userName}</option>
+                      ))}
+                      {user && metrics?.workload?.every((w: any) => w.userId !== user.id) && (
+                        <option value={user.id}>{user.name} (Você)</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Prazo (Opcional)</label>
+                    <input
+                      type="date"
+                      value={editDueDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTask(false)}
+                    className="flex-1 py-2 text-xs font-semibold border border-slate-200 rounded-sm hover:bg-slate-50 cursor-pointer transition text-center"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveTaskEdit}
+                    disabled={isSavingTask}
+                    className="flex-1 py-2 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-sm disabled:opacity-50 cursor-pointer transition text-center"
+                  >
+                    {isSavingTask ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
               </div>
             ) : (() => {
               const creator = getUserDetails(selectedTask.created_by_id);
@@ -1248,15 +1412,21 @@ export function Dashboard() {
                     )}
                   </div>
 
-                  <div className="pt-2">
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
                     <button
                       onClick={() => {
                         setIsDetailOpen(false);
                         setSelectedTask(null);
                       }}
-                      className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-sm transition cursor-pointer text-center"
+                      className="flex-1 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-sm transition cursor-pointer text-center"
                     >
                       Fechar
+                    </button>
+                    <button
+                      onClick={handleStartEdit}
+                      className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-sm transition cursor-pointer text-center"
+                    >
+                      Editar Tarefa
                     </button>
                   </div>
                 </div>
