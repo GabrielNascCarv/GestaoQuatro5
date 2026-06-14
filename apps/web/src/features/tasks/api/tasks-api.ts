@@ -1,5 +1,5 @@
 import { apiClient } from '../../../lib/api-client';
-import type { Task, CreateTaskDto, UpdateTaskDto, TaskMetrics } from '../types';
+import type { Task, CreateTaskDto, UpdateTaskDto, TaskMetrics, WeeklyReport, WeeklyReportDetail } from '../types';
 
 export const tasksApi = {
   create: async (data: CreateTaskDto): Promise<Task> => {
@@ -33,6 +33,21 @@ export const tasksApi = {
 
   getMetrics: async (): Promise<TaskMetrics> => {
     const response = await apiClient.get<TaskMetrics>('/tasks/metrics');
+    return response.data;
+  },
+
+  closeWeek: async (): Promise<WeeklyReport> => {
+    const response = await apiClient.post<WeeklyReport>('/tasks/close-week');
+    return response.data;
+  },
+
+  listWeeklyReports: async (): Promise<WeeklyReport[]> => {
+    const response = await apiClient.get<WeeklyReport[]>('/tasks/weekly-reports');
+    return response.data;
+  },
+
+  getWeeklyReport: async (id: string): Promise<WeeklyReportDetail> => {
+    const response = await apiClient.get<WeeklyReportDetail>(`/tasks/weekly-reports/${id}`);
     return response.data;
   },
 };

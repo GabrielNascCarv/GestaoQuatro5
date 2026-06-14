@@ -68,3 +68,29 @@ export interface TaskMetrics {
     previousWeekScore: number;
   };
 }
+
+export interface WeeklyReport {
+  id: string;
+  week_name: string;
+  closed_at: string;
+  total_tasks: number;
+  completed_tasks: number;
+  total_score: number;
+  completed_score: number;
+}
+
+export interface WeeklyReportDetail extends WeeklyReport {
+  tasks: Array<{
+    id: string;
+    title: string;
+    score: number;
+    status: TaskStatus;
+    due_date: string | null;
+    completed_at: string | null;
+    assigned_to: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+  }>;
+}
