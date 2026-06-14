@@ -1,10 +1,12 @@
 import { prisma } from '@gestao-quatro5/database';
 import { IGetTaskMetricsUseCase, TaskMetricsOutput } from '../../contracts/usecase/task/get-task-metrics-usecase';
 import { TaskStatus } from '../../entities/task';
-import { ITaskRepository } from '../../contracts/repository/task-repository';
+import { IWeeklyReportRepository } from '../../contracts/repository/weekly-report-repository';
 
 export class GetTaskMetricsUseCase implements IGetTaskMetricsUseCase {
-  constructor(private readonly taskRepository: ITaskRepository) {}
+  constructor(
+    private readonly weeklyReportRepository: IWeeklyReportRepository
+  ) {}
 
   async execute(): Promise<TaskMetricsOutput> {
     const now = new Date();
@@ -90,20 +92,18 @@ export class GetTaskMetricsUseCase implements IGetTaskMetricsUseCase {
     // Sort critical deadlines by due_date (ascending) to show most urgent tasks first
     criticalDeadlines.sort((a, b) => a.due_date.getTime() - b.due_date.getTime());
 
-    // 4. weeklyVelocity (completed tasks score in current week vs previous week)
+    // 4. weeklyVelocity (completed tasks score in current cycle vs last closed weekly report)
     let currentWeekScore = 0;
-    let previousWeekScore = 0;
 
     tasks.forEach((task) => {
-      if (task.status === 'COMPLETED' && task.completed_at) {
-        const completedDate = new Date(task.completed_at);
-        if (completedDate >= sevenDaysAgo && completedDate <= now) {
-          currentWeekScore += task.score;
-        } else if (completedDate >= fourteenDaysAgo && completedDate < sevenDaysAgo) {
-          previousWeekScore += task.score;
-        }
+      if (task.status === 'COMPLETED' && task.weekly_report_id === null) {
+        currentWeekScore += task.score;
       }
     });
+
+    const weeklyReports = await this.weeklyReportRepository.findAll();
+    const lastReport = weeklyReports[0] || null;
+    const previousWeekScore = lastReport ? lastReport.completed_score : 0;
 
     return {
       flowStatus,
