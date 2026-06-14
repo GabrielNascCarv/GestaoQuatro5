@@ -47,7 +47,7 @@ export function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [score, setScore] = useState(1);
+  const [score, setScore] = useState<number | ''>(1);
   const [dueDate, setDueDate] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -215,7 +215,8 @@ export function Dashboard() {
       toast.error('O título da tarefa é obrigatório.');
       return;
     }
-    if (score < 0) {
+    const parsedScore = score === '' ? 0 : Number(score);
+    if (parsedScore < 0) {
       toast.error('A pontuação não pode ser negativa.');
       return;
     }
@@ -226,7 +227,7 @@ export function Dashboard() {
       const newTask = await tasksApi.create({
         title,
         description: description || undefined,
-        score,
+        score: parsedScore,
         created_by_id: user.id,
         due_date: dueDate ? new Date(dueDate).toISOString() : null,
       });
@@ -1046,7 +1047,10 @@ export function Dashboard() {
                   required
                   min={0}
                   value={score}
-                  onChange={(e) => setScore(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setScore(val === '' ? '' : Number(val));
+                  }}
                   className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
                 />
               </div>
