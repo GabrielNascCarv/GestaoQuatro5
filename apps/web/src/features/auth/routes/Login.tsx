@@ -22,6 +22,14 @@ interface DecodedToken {
   email?: string;
   preferred_username?: string;
   db_user_id?: string;
+  resource_access?: {
+    [clientId: string]: {
+      roles?: string[];
+    };
+  };
+  realm_access?: {
+    roles?: string[];
+  };
 }
 
 export function Login() {
@@ -48,11 +56,16 @@ export function Login() {
       
       // Decode JWT to extract user information
       const decoded = jwtDecode<DecodedToken>(tokens.accessToken);
+      const clientRoles = decoded.resource_access?.['gestao-quatro5-api']?.roles || [];
+      const realmRoles = decoded.realm_access?.roles || [];
+      const roles = [...new Set([...clientRoles, ...realmRoles])];
+
       const user = {
         id: decoded.db_user_id || decoded.sub,
         name: decoded.name || decoded.preferred_username || 'Usuário',
         email: decoded.email || data.email,
         created_at: new Date().toISOString(),
+        roles,
       };
 
       setAuth(user, tokens.accessToken, tokens.refreshToken);
