@@ -43,6 +43,9 @@ model Task {
   created_by_id  String
   created_by     User       @relation("CreatedTasks", fields: [created_by_id], references: [id])
 
+  due_date       DateTime?
+  completed_at   DateTime?
+
   created_at     DateTime   @default(now())
   updated_at     DateTime   @updatedAt
   deleted_at     DateTime?
