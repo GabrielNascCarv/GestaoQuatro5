@@ -99,19 +99,3 @@ Ao popular o banco de dados usando `npm run db:seed` com o Keycloak importado, v
 ### 💻 Usuário Desenvolvedor (Acesso padrão)
 *   **E-mail / Usuário**: `dev@gmail.com`
 *   **Senha**: `123456`
-
----
-
-## 🛠️ Manutenção do Keycloak (Apenas para Desenvolvedores)
-
-Se você precisar modificar configurações do Keycloak (como adicionar novos fluxos, clients ou atributos) e desejar persistir essas mudanças para o repositório de forma que outros desenvolvedores as recebam:
-
-1. Com o container do Keycloak rodando, execute o comando de exportação oficial do Keycloak:
-   ```bash
-   docker exec -it gestao-quatro5-keycloak /opt/bitnami/keycloak/bin/kc.sh export --file /tmp/quatro5-realm.json --realm quatro5 --users same_file
-   ```
-2. Copie o arquivo exportado de dentro do container para a raiz do seu projeto local:
-   ```bash
-   docker cp gestao-quatro5-keycloak:/tmp/quatro5-realm.json ./keycloak-realm.json
-   ```
-3. Realize o commit do arquivo `keycloak-realm.json` atualizado. Quando outro desenvolvedor clonar o repositório e rodar `docker compose up -d`, o Keycloak dele será inicializado já com as novas configurações.
