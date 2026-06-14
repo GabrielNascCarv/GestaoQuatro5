@@ -1,5 +1,5 @@
 import { Controller, HttpRequest, HttpResponse } from '../../adapters/fastify-route-adapter';
-import { ICloseWeekUseCase } from '../../contracts/usecase/task/close-week-usecase';
+import { ICloseWeekUseCase } from '../../contracts/usecase/weekly-report/close-week-usecase';
 
 export class CloseWeekController implements Controller {
   constructor(private readonly closeWeekUseCase: ICloseWeekUseCase) {}

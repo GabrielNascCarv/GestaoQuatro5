@@ -1,5 +1,5 @@
-import { ListWeeklyReportsController } from '../../../controllers/task/list-weekly-reports-controller';
-import { ListWeeklyReportsUseCaseFactory } from '../../usecase/task/list-weekly-reports-factory';
+import { ListWeeklyReportsController } from '../../../controllers/weekly-report/list-weekly-reports-controller';
+import { ListWeeklyReportsUseCaseFactory } from '../../usecase/weekly-report/list-weekly-reports-factory';
 
 export class ListWeeklyReportsControllerFactory {
   static create() {

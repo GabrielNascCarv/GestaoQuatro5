@@ -1,14 +1,11 @@
-import { prisma } from '@gestao-quatro5/database';
-import { IListWeeklyReportsUseCase, WeeklyReportOutputItem } from '../../contracts/usecase/task/list-weekly-reports-usecase';
-import { ITaskRepository } from '../../contracts/repository/task-repository';
+import { IListWeeklyReportsUseCase, WeeklyReportOutputItem } from '../../contracts/usecase/weekly-report/list-weekly-reports-usecase';
+import { IWeeklyReportRepository } from '../../contracts/repository/weekly-report-repository';
 
 export class ListWeeklyReportsUseCase implements IListWeeklyReportsUseCase {
-  constructor(private readonly taskRepository: ITaskRepository) {}
+  constructor(private readonly weeklyReportRepository: IWeeklyReportRepository) {}
 
   async execute(): Promise<WeeklyReportOutputItem[]> {
-    const list = await prisma.weeklyReport.findMany({
-      orderBy: { closed_at: 'desc' }
-    });
+    const list = await this.weeklyReportRepository.findAll();
 
     return list.map((report) => ({
       id: report.id,

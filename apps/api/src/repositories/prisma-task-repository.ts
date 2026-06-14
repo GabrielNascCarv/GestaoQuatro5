@@ -161,6 +161,37 @@ export class PrismaTaskRepository implements ITaskRepository {
     return taskUpdated;
   }
 
+  async findActive(): Promise<Task[]> {
+    const list = await prisma.task.findMany({
+      where: {
+        deleted_at: null,
+        weekly_report_id: null,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const listTasks = list.map(
+      (item) =>
+        new Task({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          score: item.score,
+          status: item.status as TaskStatus,
+          assigned_to_id: item.assigned_to_id,
+          created_by_id: item.created_by_id,
+          due_date: item.due_date,
+          completed_at: item.completed_at,
+          weekly_report_id: item.weekly_report_id,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          deleted_at: item.deleted_at,
+        })
+    );
+
+    return listTasks;
+  }
+
   async delete(id: string): Promise<void> {
     await prisma.task.update({
       where: { id },

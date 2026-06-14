@@ -1,5 +1,5 @@
-import { CloseWeekController } from '../../../controllers/task/close-week-controller';
-import { CloseWeekUseCaseFactory } from '../../usecase/task/close-week-factory';
+import { CloseWeekController } from '../../../controllers/weekly-report/close-week-controller';
+import { CloseWeekUseCaseFactory } from '../../usecase/weekly-report/close-week-factory';
 
 export class CloseWeekControllerFactory {
   static create() {
