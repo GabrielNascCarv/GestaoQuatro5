@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import {
   LogOut,
   ListTodo,
-  User,
   Plus,
   Trash2,
   ChevronRight,
@@ -66,6 +65,11 @@ export function Dashboard() {
 
   // Drag and Drop State
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+
+  // Task Detail Modal State
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   const fetchTasks = async () => {
     if (!user) return;
@@ -280,6 +284,33 @@ export function Dashboard() {
     }
   };
 
+  const getUserDetails = (userId: string | null) => {
+    if (!userId) return null;
+    const match = metrics?.workload?.find((w: any) => w.userId === userId);
+    if (match) {
+      return { name: match.userName, email: match.userEmail };
+    }
+    if (user && userId === user.id) {
+      return { name: user.name || '', email: user.email || '' };
+    }
+    return null;
+  };
+
+  const handleOpenDetail = async (taskId: string) => {
+    setIsDetailLoading(true);
+    setIsDetailOpen(true);
+    try {
+      const taskData = await tasksApi.getById(taskId);
+      setSelectedTask(taskData);
+    } catch (error) {
+      console.error('Fetch task detail error:', error);
+      toast.error('Erro ao buscar detalhes da tarefa.');
+      setIsDetailOpen(false);
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
+
   // Drag and Drop handlers
   const handleDragStart = (taskId: string) => {
     setDraggedTaskId(taskId);
@@ -301,10 +332,7 @@ export function Dashboard() {
 
   // Stats calculation
   const totalTasks = tasks.length;
-  const totalScore = tasks.reduce((acc, t) => acc + t.score, 0);
   const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
-  const inProgressCount = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
-  const inReviewCount = tasks.filter((t) => t.status === 'IN_REVIEW').length;
 
   if (!user) return null;
 
@@ -740,7 +768,11 @@ export function Dashboard() {
                             const isOverdue = dueDateObj < new Date();
                             
                             return (
-                              <div key={task.id} className="p-2.5 border border-rose-100 bg-rose-50/20 rounded-sm space-y-1">
+                              <div
+                                key={task.id}
+                                onClick={() => handleOpenDetail(task.id)}
+                                className="p-2.5 border border-rose-100 bg-rose-50/20 hover:bg-rose-50/50 hover:border-rose-200 transition-all duration-150 rounded-sm space-y-1 cursor-pointer"
+                              >
                                 <div className="flex justify-between gap-1.5">
                                   <span className="text-[11px] font-bold text-slate-800 break-words leading-tight flex-1">{task.title}</span>
                                   <span className="bg-white border border-rose-200 text-rose-800 text-[8px] font-bold px-1 rounded-sm shrink-0 self-start">{task.score} pts</span>
@@ -841,7 +873,8 @@ export function Dashboard() {
                               key={task.id}
                               draggable
                               onDragStart={() => handleDragStart(task.id)}
-                              className="bg-white p-3.5 rounded-sm border border-slate-200/90 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-slate-300 transition-all duration-150 cursor-grab active:cursor-grabbing group relative space-y-2"
+                              onClick={() => handleOpenDetail(task.id)}
+                              className="bg-white p-3.5 rounded-sm border border-slate-200/90 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer group relative space-y-2"
                             >
                               {/* Task Card Header */}
                               <div className="flex justify-between items-start gap-2">
@@ -891,7 +924,10 @@ export function Dashboard() {
                                     </div>
                                   ) : (
                                     <button
-                                      onClick={() => handleAssignToMe(task.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAssignToMe(task.id);
+                                      }}
                                       className="text-[#C2410C] hover:underline font-bold cursor-pointer"
                                     >
                                       Atribuir a mim
@@ -903,7 +939,8 @@ export function Dashboard() {
                                   {/* Left Move button */}
                                   {col.id !== 'TODO' && (
                                     <button
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         const prevIndex = COLUMNS.findIndex((c) => c.id === col.id) - 1;
                                         handleUpdateStatus(task.id, COLUMNS[prevIndex].id);
                                       }}
@@ -917,7 +954,8 @@ export function Dashboard() {
                                   {/* Right Move button */}
                                   {col.id !== 'COMPLETED' && (
                                     <button
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         const nextIndex = COLUMNS.findIndex((c) => c.id === col.id) + 1;
                                         handleUpdateStatus(task.id, COLUMNS[nextIndex].id);
                                       }}
@@ -930,7 +968,10 @@ export function Dashboard() {
 
                                   {/* Delete button */}
                                   <button
-                                    onClick={() => handleDeleteTask(task.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteTask(task.id);
+                                    }}
                                     className="p-1 hover:bg-red-50 rounded-sm text-slate-400 hover:text-red-600 cursor-pointer ml-1"
                                     title="Excluir tarefa"
                                   >
@@ -1083,6 +1124,137 @@ export function Dashboard() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TASK DETAIL MODAL */}
+      {isDetailOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-sm border border-slate-200 shadow-xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+              <h2 className="text-sm font-bold text-slate-800">Detalhes da Tarefa</h2>
+              <button
+                onClick={() => {
+                  setIsDetailOpen(false);
+                  setSelectedTask(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition cursor-pointer text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            {isDetailLoading || !selectedTask ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2">
+                <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" />
+                <span className="text-[10px] text-slate-400 font-medium">Carregando detalhes...</span>
+              </div>
+            ) : (() => {
+              const creator = getUserDetails(selectedTask.created_by_id);
+              const assignee = getUserDetails(selectedTask.assigned_to_id);
+              return (
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 leading-snug">{selectedTask.title}</h3>
+                  </div>
+
+                  {selectedTask.description && (
+                    <div className="space-y-1 bg-slate-50 p-2.5 rounded-sm border border-slate-100 max-h-[150px] overflow-y-auto custom-scrollbar">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Descrição</span>
+                      <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{selectedTask.description}</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Status</span>
+                      <span className="inline-block bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-sm border border-slate-200 uppercase text-[9px]">
+                        {COLUMNS.find(c => c.id === selectedTask.status)?.label || selectedTask.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Pontuação</span>
+                      <span className="inline-block bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-sm border border-amber-200 text-[9px]">
+                        {selectedTask.score} pts
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Criador</span>
+                      <div className="text-slate-700">
+                        <span className="font-semibold block">{creator?.name || 'Carregando...'}</span>
+                        <span className="text-[10px] text-slate-400">{creator?.email || ''}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Responsável</span>
+                      {selectedTask.assigned_to_id ? (
+                        <div className="text-slate-700">
+                          <span className="font-semibold block">{assignee?.name || 'Carregando...'}</span>
+                          <span className="text-[10px] text-slate-400">{assignee?.email || ''}</span>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-slate-400 italic block mb-1">Não atribuída</span>
+                          <button
+                            onClick={() => {
+                              handleAssignToMe(selectedTask.id);
+                              // Sync locally in state
+                              setSelectedTask({
+                                ...selectedTask,
+                                assigned_to_id: user.id
+                              });
+                            }}
+                            className="bg-[#C2410C] hover:bg-[#A83707] text-white text-[9px] font-bold px-2 py-1 rounded-sm cursor-pointer transition"
+                          >
+                            Atribuir a mim
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+                    {selectedTask.due_date && (
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Prazo de Entrega</span>
+                        <span className="text-slate-600 font-medium flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          {new Date(selectedTask.due_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedTask.completed_at && (
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Concluída em</span>
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                          {new Date(selectedTask.completed_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        setIsDetailOpen(false);
+                        setSelectedTask(null);
+                      }}
+                      className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-sm transition cursor-pointer text-center"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
