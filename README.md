@@ -20,16 +20,6 @@ Certifique-se de ter instalado em sua máquina:
 
 ---
 
-## ⚙️ Variáveis de Ambiente
-
-O projeto utiliza um arquivo `.env` na raiz para configuração de banco de dados e autenticação Keycloak.
-Se necessário, duplique o `.env.example` e salve como `.env`:
-```bash
-cp .env.example .env
-```
-
----
-
 ## 🚀 Como Executar o Projeto
 
 Siga os passos a seguir para rodar a aplicação localmente com dados populados:
@@ -47,7 +37,20 @@ Instale as dependências de todas as aplicações e pacotes compartilhados na ra
 npm install
 ```
 
-### 3. Subir a Infraestrutura (Postgres e Keycloak)
+### 3. Configurar as Variáveis de Ambiente (.env)
+Duplique o arquivo `.env.example` para `.env` na raiz do projeto para configurar a conexão com o banco e o Keycloak:
+```bash
+cp .env.example .env
+```
+
+### 4. Compilar Pacotes e Gerar o Prisma Client
+Para gerar os tipos do Prisma e compilar o pacote de banco de dados compartilhado (`@gestao-quatro5/database`), execute o build a partir da raiz:
+```bash
+npm run build
+```
+*(💡 Nota: Este passo compila o pacote de banco compartilhado criando a pasta `dist/` necessária para que o servidor da API encontre os módulos de banco).*
+
+### 5. Subir a Infraestrutura (Postgres e Keycloak)
 Suba os containers do Docker em segundo plano:
 ```bash
 docker compose up -d
@@ -55,20 +58,20 @@ docker compose up -d
 *   **Banco de Dados Principal (Postgres)**: Mapeado na porta `5437`
 *   **Keycloak Admin Console**: Disponível em `http://localhost:8081` (Admin: `admin` / Senha: `admin_password`)
 
-### 4. Sincronizar o Schema do Prisma
+### 6. Sincronizar o Schema do Prisma
 A partir da raiz do projeto, aplique as migrações e atualize o banco de dados local com as últimas alterações do schema:
 ```bash
 npx prisma db push --schema=packages/database/prisma/schema.prisma
 ```
 
-### 5. Popular o Banco de Dados (Database Seeding)
+### 7. Popular o Banco de Dados (Database Seeding)
 Para rodar a aplicação com tarefas de teste, histórico de velocidade e usuários já criados, execute o script de seeding:
 ```bash
 npm run db:seed
 ```
 > 💡 *Nota: Este comando limpa a base de dados atual e cria registros fictícios de tarefas (ativas e arquivadas), usuários sincronizados e histórico de relatórios semanais.*
 
-### 6. Rodar os Servidores de Desenvolvimento
+### 8. Rodar os Servidores de Desenvolvimento
 Execute os comandos abaixo (em terminais separados) a partir da raiz do projeto:
 
 *   **Rodar Back-end (API)**:
