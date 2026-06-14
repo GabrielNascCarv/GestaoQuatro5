@@ -34,13 +34,20 @@ cp .env.example .env
 
 Siga os passos a seguir para rodar a aplicação localmente com dados populados:
 
-### 1. Instalar as Dependências
+### 1. Clonar o Repositório e Acessar a Pasta
+Clone o projeto e navegue até a raiz do repositório:
+```bash
+git clone https://github.com/GabrielNascCarv/GestaoQuatro5.git
+cd GestaoQuatro5
+```
+
+### 2. Instalar as Dependências
 Instale as dependências de todas as aplicações e pacotes compartilhados na raiz do projeto:
 ```bash
 npm install
 ```
 
-### 2. Subir a Infraestrutura (Postgres e Keycloak)
+### 3. Subir a Infraestrutura (Postgres e Keycloak)
 Suba os containers do Docker em segundo plano:
 ```bash
 docker compose up -d
@@ -48,20 +55,20 @@ docker compose up -d
 *   **Banco de Dados Principal (Postgres)**: Mapeado na porta `5437`
 *   **Keycloak Admin Console**: Disponível em `http://localhost:8081` (Admin: `admin` / Senha: `admin_password`)
 
-### 3. Sincronizar o Schema do Prisma
+### 4. Sincronizar o Schema do Prisma
 A partir da raiz do projeto, aplique as migrações e atualize o banco de dados local com as últimas alterações do schema:
 ```bash
 npx prisma db push --schema=packages/database/prisma/schema.prisma
 ```
 
-### 4. Popular o Banco de Dados (Database Seeding)
+### 5. Popular o Banco de Dados (Database Seeding)
 Para rodar a aplicação com tarefas de teste, histórico de velocidade e usuários já criados, execute o script de seeding:
 ```bash
 npm run db:seed
 ```
 > 💡 *Nota: Este comando limpa a base de dados atual e cria registros fictícios de tarefas (ativas e arquivadas), usuários sincronizados e histórico de relatórios semanais.*
 
-### 5. Rodar os Servidores de Desenvolvimento
+### 6. Rodar os Servidores de Desenvolvimento
 Execute os comandos abaixo (em terminais separados) a partir da raiz do projeto:
 
 *   **Rodar Back-end (API)**:
