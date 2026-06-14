@@ -78,25 +78,13 @@ Execute os comandos abaixo (em terminais separados) a partir da raiz do projeto:
 
 ---
 
-## 🔐 Configuração e Backup do Keycloak
+## 🔐 Automação do Keycloak
 
-Para garantir que o projeto funcione **de primeira** em qualquer máquina sem precisar reconfigurar o Keycloak manualmente, nós configuramos a importação automática do Realm.
+Para garantir que o projeto funcione **de primeira** sem necessidade de configurações manuais (como criar Realms, Clients ou Roles), o Keycloak está configurado com **importação automática**.
 
-### Como funciona o Import automático?
-O arquivo `keycloak-realm.json` na raiz do projeto contém todas as configurações do realm `quatro5`, incluindo clientes (`gestao-quatro5-api`), papéis (`admin`, `user`) e usuários criados. O Docker Compose está configurado para ler esse arquivo e importá-lo automaticamente no startup inicial do Keycloak.
+O arquivo `keycloak-realm.json` na raiz do projeto já contém a estrutura necessária (clientes, escopos, atributos e os usuários de teste pré-cadastrados). O `docker-compose.yml` monta e importa esse arquivo no momento em que você executa o comando `docker compose up -d`. **Nenhuma ação é necessária por parte de quem clona o repositório.**
 
-### Como atualizar o Backup do Keycloak (Realm Export)?
-Se você criar novos usuários, alterar papéis ou modificar permissões no Keycloak e quiser salvar esse estado atualizado no projeto:
-
-1. Com o container do Keycloak rodando, execute o comando de exportação oficial do Keycloak:
-   ```bash
-   docker exec -it gestao-quatro5-keycloak /opt/bitnami/keycloak/bin/kc.sh export --file /tmp/quatro5-realm.json --realm quatro5 --users realm_file
-   ```
-2. Copie o arquivo exportado de dentro do container para a raiz do seu projeto local:
-   ```bash
-   docker cp gestao-quatro5-keycloak:/tmp/quatro5-realm.json ./keycloak-realm.json
-   ```
-3. Realize o commit do arquivo `keycloak-realm.json` atualizado. Quando outra pessoa clonar o repositório e rodar `docker compose up -d`, ela receberá o Keycloak idêntico ao seu!
+---
 
 ---
 
@@ -110,4 +98,20 @@ Ao popular o banco de dados usando `npm run db:seed` com o Keycloak importado, v
 
 ### 💻 Usuário Desenvolvedor (Acesso padrão)
 *   **E-mail / Usuário**: `dev@gmail.com`
-*   **Senha**: `123456` (ou senha configurada na importação do keycloak-realm)
+*   **Senha**: `123456`
+
+---
+
+## 🛠️ Manutenção do Keycloak (Apenas para Desenvolvedores)
+
+Se você precisar modificar configurações do Keycloak (como adicionar novos fluxos, clients ou atributos) e desejar persistir essas mudanças para o repositório de forma que outros desenvolvedores as recebam:
+
+1. Com o container do Keycloak rodando, execute o comando de exportação oficial do Keycloak:
+   ```bash
+   docker exec -it gestao-quatro5-keycloak /opt/bitnami/keycloak/bin/kc.sh export --file /tmp/quatro5-realm.json --realm quatro5 --users same_file
+   ```
+2. Copie o arquivo exportado de dentro do container para a raiz do seu projeto local:
+   ```bash
+   docker cp gestao-quatro5-keycloak:/tmp/quatro5-realm.json ./keycloak-realm.json
+   ```
+3. Realize o commit do arquivo `keycloak-realm.json` atualizado. Quando outro desenvolvedor clonar o repositório e rodar `docker compose up -d`, o Keycloak dele será inicializado já com as novas configurações.
