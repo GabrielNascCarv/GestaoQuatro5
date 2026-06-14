@@ -6,6 +6,7 @@ import { ListTasksControllerFactory } from '../../factory/controller/task/list-t
 import { UpdateTaskControllerFactory } from '../../factory/controller/task/update-task-factory';
 import { DeleteTaskControllerFactory } from '../../factory/controller/task/delete-task-factory';
 import { ListUserTasksControllerFactory } from '../../factory/controller/task/list-user-tasks-factory';
+import { GetTaskMetricsControllerFactory } from '../../factory/controller/task/get-task-metrics-factory';
 
 export async function taskRoutes(fastify: FastifyInstance) {
   fastify.post(
@@ -21,6 +22,11 @@ export async function taskRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/tasks/user/:userId',
     adaptRoute(ListUserTasksControllerFactory.create())
+  );
+
+  fastify.get(
+    '/tasks/metrics',
+    adaptRoute(GetTaskMetricsControllerFactory.create())
   );
 
   fastify.get(
