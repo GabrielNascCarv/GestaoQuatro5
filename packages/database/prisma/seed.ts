@@ -62,6 +62,7 @@ async function main() {
   for (const u of usersToSeed) {
     const dbUser = await prisma.user.create({
       data: {
+        id: u.keycloak_id, // Map PostgreSQL User ID directly to Keycloak ID for seamless local dev sync
         name: u.name,
         email: u.email,
         password: '', // Password is managed by Keycloak
@@ -69,7 +70,7 @@ async function main() {
       },
     });
     createdUsers.push(dbUser);
-    console.log(`Created user: ${dbUser.name} (${dbUser.email})`);
+    console.log(`Created user: ${dbUser.name} (${dbUser.email}) with ID: ${dbUser.id}`);
   }
 
   const primaryUser = createdUsers[0];
