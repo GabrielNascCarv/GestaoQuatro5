@@ -92,7 +92,7 @@ Execute os comandos abaixo (em terminais separados) a partir da raiz do projeto:
 
 Para garantir que o projeto funcione **de primeira** sem necessidade de configurações manuais (como criar Realms, Clients ou Roles), o Keycloak está configurado com **importação automática**.
 
-O arquivo `keycloak-realm.json` na raiz do projeto já contém a estrutura necessária (clientes, escopos, atributos e os usuários de teste pré-cadastrados). O `docker-compose.yml` monta e importa esse arquivo no momento em que você executa o comando `docker compose up -d`. **Nenhuma ação é necessária por parte de quem clona o repositório.**
+O arquivo `quatro5-realm.json` na raiz do projeto já contém a estrutura necessária (clientes, escopos, atributos e os usuários de teste pré-cadastrados). O `docker-compose.yml` monta e importa esse arquivo no momento em que você executa o comando `docker compose up -d`. **Nenhuma ação é necessária por parte de quem clona o repositório.**
 
 ---
 

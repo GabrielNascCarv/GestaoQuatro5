@@ -14,7 +14,7 @@ async function main() {
   await prisma.user.deleteMany({});
 
   // 2. Load users from Keycloak realm export if available
-  const realmPath = path.join(__dirname, '../../../keycloak-realm.json');
+  const realmPath = path.join(__dirname, '../../../quatro5-realm.json');
   let usersToSeed: { id?: string; name: string; email: string; keycloak_id: string }[] = [];
 
   if (fs.existsSync(realmPath)) {
@@ -36,7 +36,7 @@ async function main() {
         }
       });
     } catch (error) {
-      console.error('Error parsing keycloak-realm.json:', error);
+      console.error('Error parsing quatro5-realm.json:', error);
     }
   }
 
