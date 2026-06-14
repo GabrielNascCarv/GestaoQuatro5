@@ -11,8 +11,6 @@ export class GetTaskMetricsUseCase implements IGetTaskMetricsUseCase {
   async execute(): Promise<TaskMetricsOutput> {
     const now = new Date();
     const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
     // Fetch all users (excluding deleted ones)
     const users = await prisma.user.findMany({
