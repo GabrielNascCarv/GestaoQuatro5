@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import {
   LogOut,
   ListTodo,
-  User,
   Plus,
   Trash2,
   ChevronRight,
@@ -48,7 +47,7 @@ export function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [score, setScore] = useState(1);
+  const [score, setScore] = useState<number | ''>(1);
   const [dueDate, setDueDate] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -66,6 +65,25 @@ export function Dashboard() {
 
   // Drag and Drop State
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+
+  // Task Detail Modal State
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+
+  // Edit Task State
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editScore, setEditScore] = useState<number | ''>(1);
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editStatus, setEditStatus] = useState<TaskStatus>('TODO');
+  const [editAssignedToId, setEditAssignedToId] = useState<string | null>(null);
+  const [isSavingTask, setIsSavingTask] = useState(false);
+
+  // Delete Task State
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchTasks = async () => {
     if (!user) return;
@@ -211,7 +229,8 @@ export function Dashboard() {
       toast.error('O título da tarefa é obrigatório.');
       return;
     }
-    if (score < 0) {
+    const parsedScore = score === '' ? 0 : Number(score);
+    if (parsedScore < 0) {
       toast.error('A pontuação não pode ser negativa.');
       return;
     }
@@ -222,7 +241,7 @@ export function Dashboard() {
       const newTask = await tasksApi.create({
         title,
         description: description || undefined,
-        score,
+        score: parsedScore,
         created_by_id: user.id,
         due_date: dueDate ? new Date(dueDate).toISOString() : null,
       });
@@ -268,15 +287,106 @@ export function Dashboard() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Deseja realmente excluir esta tarefa? (Soft delete)')) return;
+  const handleDeleteTask = (taskId: string) => {
+    setTaskToDelete(taskId);
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    setIsDeleting(true);
     try {
-      await tasksApi.delete(taskId);
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      await tasksApi.delete(taskToDelete);
+      setTasks((prev) => prev.filter((t) => t.id !== taskToDelete));
       toast.success('Tarefa excluída com sucesso.');
+      setTaskToDelete(null);
+      if (selectedTask?.id === taskToDelete) {
+        setIsDetailOpen(false);
+        setSelectedTask(null);
+      }
+      fetchMetrics();
     } catch (error) {
       console.error('Delete task error:', error);
       toast.error('Erro ao excluir tarefa.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const getUserDetails = (userId: string | null) => {
+    if (!userId) return null;
+    const match = metrics?.workload?.find((w: any) => w.userId === userId);
+    if (match) {
+      return { name: match.userName, email: match.userEmail };
+    }
+    if (user && userId === user.id) {
+      return { name: user.name || '', email: user.email || '' };
+    }
+    return null;
+  };
+
+  const handleOpenDetail = async (taskId: string) => {
+    setIsDetailLoading(true);
+    setIsDetailOpen(true);
+    try {
+      const taskData = await tasksApi.getById(taskId);
+      setSelectedTask(taskData);
+    } catch (error) {
+      console.error('Fetch task detail error:', error);
+      toast.error('Erro ao buscar detalhes da tarefa.');
+      setIsDetailOpen(false);
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
+
+  const handleStartEdit = () => {
+    if (!selectedTask) return;
+    setEditTitle(selectedTask.title);
+    setEditDescription(selectedTask.description || '');
+    setEditScore(selectedTask.score);
+    setEditDueDate(selectedTask.due_date ? new Date(selectedTask.due_date).toISOString().split('T')[0] : '');
+    setEditStatus(selectedTask.status);
+    setEditAssignedToId(selectedTask.assigned_to_id);
+    setIsEditingTask(true);
+  };
+
+  const handleSaveTaskEdit = async () => {
+    if (!selectedTask) return;
+    if (!editTitle.trim()) {
+      toast.error('O título da tarefa é obrigatório.');
+      return;
+    }
+    const parsedScore = editScore === '' ? 0 : Number(editScore);
+    if (parsedScore < 0) {
+      toast.error('A pontuação não pode ser negativa.');
+      return;
+    }
+    setIsSavingTask(true);
+    try {
+      const updated = await tasksApi.update(selectedTask.id, {
+        title: editTitle,
+        description: editDescription || null,
+        score: parsedScore,
+        status: editStatus,
+        assigned_to_id: editAssignedToId,
+        due_date: editDueDate ? new Date(editDueDate).toISOString() : null,
+      });
+
+      // Update the local tasks list
+      setTasks((prev) => prev.map((t) => (t.id === selectedTask.id ? updated : t)));
+
+      // Update the selected task details
+      setSelectedTask(updated);
+      setIsEditingTask(false);
+      toast.success('Tarefa atualizada com sucesso!');
+
+      // Refresh metrics in background to keep dashboard in sync
+      fetchMetrics();
+    } catch (error: any) {
+      console.error('Update task error:', error);
+      toast.error(error.response?.data?.message || 'Erro ao atualizar tarefa.');
+    } finally {
+      setIsSavingTask(false);
     }
   };
 
@@ -301,10 +411,7 @@ export function Dashboard() {
 
   // Stats calculation
   const totalTasks = tasks.length;
-  const totalScore = tasks.reduce((acc, t) => acc + t.score, 0);
   const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
-  const inProgressCount = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
-  const inReviewCount = tasks.filter((t) => t.status === 'IN_REVIEW').length;
 
   if (!user) return null;
 
@@ -314,7 +421,10 @@ export function Dashboard() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
+            <div
+              onClick={activeTab === 'dashboard' ? () => setActiveTab('tasks') : undefined}
+              className={`flex items-center gap-2 ${activeTab === 'dashboard' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+            >
               <div className="w-8 h-8 rounded-sm bg-slate-100 border border-slate-200 flex items-center justify-center">
                 <ListTodo className="w-4 h-4 text-slate-800" />
               </div>
@@ -740,7 +850,11 @@ export function Dashboard() {
                             const isOverdue = dueDateObj < new Date();
                             
                             return (
-                              <div key={task.id} className="p-2.5 border border-rose-100 bg-rose-50/20 rounded-sm space-y-1">
+                              <div
+                                key={task.id}
+                                onClick={() => handleOpenDetail(task.id)}
+                                className="p-2.5 border border-rose-100 bg-rose-50/20 hover:bg-rose-50/50 hover:border-rose-200 transition-all duration-150 rounded-sm space-y-1 cursor-pointer"
+                              >
                                 <div className="flex justify-between gap-1.5">
                                   <span className="text-[11px] font-bold text-slate-800 break-words leading-tight flex-1">{task.title}</span>
                                   <span className="bg-white border border-rose-200 text-rose-800 text-[8px] font-bold px-1 rounded-sm shrink-0 self-start">{task.score} pts</span>
@@ -841,7 +955,8 @@ export function Dashboard() {
                               key={task.id}
                               draggable
                               onDragStart={() => handleDragStart(task.id)}
-                              className="bg-white p-3.5 rounded-sm border border-slate-200/90 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-slate-300 transition-all duration-150 cursor-grab active:cursor-grabbing group relative space-y-2"
+                              onClick={() => handleOpenDetail(task.id)}
+                              className="bg-white p-3.5 rounded-sm border border-slate-200/90 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer group relative space-y-2"
                             >
                               {/* Task Card Header */}
                               <div className="flex justify-between items-start gap-2">
@@ -891,7 +1006,10 @@ export function Dashboard() {
                                     </div>
                                   ) : (
                                     <button
-                                      onClick={() => handleAssignToMe(task.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAssignToMe(task.id);
+                                      }}
                                       className="text-[#C2410C] hover:underline font-bold cursor-pointer"
                                     >
                                       Atribuir a mim
@@ -903,7 +1021,8 @@ export function Dashboard() {
                                   {/* Left Move button */}
                                   {col.id !== 'TODO' && (
                                     <button
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         const prevIndex = COLUMNS.findIndex((c) => c.id === col.id) - 1;
                                         handleUpdateStatus(task.id, COLUMNS[prevIndex].id);
                                       }}
@@ -917,7 +1036,8 @@ export function Dashboard() {
                                   {/* Right Move button */}
                                   {col.id !== 'COMPLETED' && (
                                     <button
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         const nextIndex = COLUMNS.findIndex((c) => c.id === col.id) + 1;
                                         handleUpdateStatus(task.id, COLUMNS[nextIndex].id);
                                       }}
@@ -930,7 +1050,10 @@ export function Dashboard() {
 
                                   {/* Delete button */}
                                   <button
-                                    onClick={() => handleDeleteTask(task.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteTask(task.id);
+                                    }}
                                     className="p-1 hover:bg-red-50 rounded-sm text-slate-400 hover:text-red-600 cursor-pointer ml-1"
                                     title="Excluir tarefa"
                                   >
@@ -1002,7 +1125,10 @@ export function Dashboard() {
                   required
                   min={0}
                   value={score}
-                  onChange={(e) => setScore(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setScore(val === '' ? '' : Number(val));
+                  }}
                   className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
                 />
               </div>
@@ -1080,6 +1206,303 @@ export function Dashboard() {
                     <CheckCircle className="w-3.5 h-3.5" />
                     <span>Sim, Fechar Semana</span>
                   </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TASK DETAIL MODAL */}
+      {isDetailOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-sm border border-slate-200 shadow-xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+              <h2 className="text-sm font-bold text-slate-800">
+                {isEditingTask ? 'Editar Tarefa' : 'Detalhes da Tarefa'}
+              </h2>
+              <button
+                onClick={() => {
+                  setIsDetailOpen(false);
+                  setSelectedTask(null);
+                  setIsEditingTask(false);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition cursor-pointer text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            {isDetailLoading || !selectedTask ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2">
+                <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" />
+                <span className="text-[10px] text-slate-400 font-medium">Carregando detalhes...</span>
+              </div>
+            ) : isEditingTask ? (
+              <div className="space-y-3.5 text-xs text-slate-700">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Título</label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    placeholder="Título da tarefa..."
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Descrição</label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition resize-none"
+                    placeholder="Descrição da tarefa..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Status</label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value as TaskStatus)}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    >
+                      {COLUMNS.map((col) => (
+                        <option key={col.id} value={col.id}>{col.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pontuação</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editScore}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditScore(val === '' ? '' : Number(val));
+                      }}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Responsável</label>
+                    <select
+                      value={editAssignedToId || ''}
+                      onChange={(e) => setEditAssignedToId(e.target.value || null)}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    >
+                      <option value="">Não atribuída</option>
+                      {metrics?.workload?.map((w: any) => (
+                        <option key={w.userId} value={w.userId}>{w.userName}</option>
+                      ))}
+                      {user && metrics?.workload?.every((w: any) => w.userId !== user.id) && (
+                        <option value={user.id}>{user.name} (Você)</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Prazo (Opcional)</label>
+                    <input
+                      type="date"
+                      value={editDueDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTask(false)}
+                    className="flex-1 py-2 text-xs font-semibold border border-slate-200 rounded-sm hover:bg-slate-50 cursor-pointer transition text-center"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveTaskEdit}
+                    disabled={isSavingTask}
+                    className="flex-1 py-2 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-sm disabled:opacity-50 cursor-pointer transition text-center"
+                  >
+                    {isSavingTask ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            ) : (() => {
+              const creator = getUserDetails(selectedTask.created_by_id);
+              const assignee = getUserDetails(selectedTask.assigned_to_id);
+              return (
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 leading-snug">{selectedTask.title}</h3>
+                  </div>
+
+                  {selectedTask.description && (
+                    <div className="space-y-1 bg-slate-50 p-2.5 rounded-sm border border-slate-100 max-h-[150px] overflow-y-auto custom-scrollbar">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Descrição</span>
+                      <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{selectedTask.description}</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Status</span>
+                      <span className="inline-block bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-sm border border-slate-200 uppercase text-[9px]">
+                        {COLUMNS.find(c => c.id === selectedTask.status)?.label || selectedTask.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Pontuação</span>
+                      <span className="inline-block bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-sm border border-amber-200 text-[9px]">
+                        {selectedTask.score} pts
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Criador</span>
+                      <div className="text-slate-700">
+                        <span className="font-semibold block">{creator?.name || 'Carregando...'}</span>
+                        <span className="text-[10px] text-slate-400">{creator?.email || ''}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Responsável</span>
+                      {selectedTask.assigned_to_id ? (
+                        <div className="text-slate-700">
+                          <span className="font-semibold block">{assignee?.name || 'Carregando...'}</span>
+                          <span className="text-[10px] text-slate-400">{assignee?.email || ''}</span>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-slate-400 italic block mb-1">Não atribuída</span>
+                          <button
+                            onClick={() => {
+                              handleAssignToMe(selectedTask.id);
+                              // Sync locally in state
+                              setSelectedTask({
+                                ...selectedTask,
+                                assigned_to_id: user.id
+                              });
+                            }}
+                            className="bg-[#C2410C] hover:bg-[#A83707] text-white text-[9px] font-bold px-2 py-1 rounded-sm cursor-pointer transition"
+                          >
+                            Atribuir a mim
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+                    {selectedTask.due_date && (
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Prazo de Entrega</span>
+                        <span className="text-slate-600 font-medium flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          {new Date(selectedTask.due_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedTask.completed_at && (
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Concluída em</span>
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                          {new Date(selectedTask.completed_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={() => {
+                        setIsDetailOpen(false);
+                        setSelectedTask(null);
+                      }}
+                      className="flex-1 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-sm transition cursor-pointer text-center"
+                    >
+                      Fechar
+                    </button>
+                    <button
+                      onClick={handleStartEdit}
+                      className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-sm transition cursor-pointer text-center"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (selectedTask) {
+                          handleDeleteTask(selectedTask.id);
+                        }
+                      }}
+                      className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-sm transition cursor-pointer text-center flex items-center justify-center gap-1"
+                      title="Excluir tarefa"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Excluir</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* DELETE TASK CONFIRMATION MODAL */}
+      {taskToDelete && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-sm border border-slate-200 shadow-xl p-5 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Excluir Tarefa</h3>
+                <p className="text-[10px] text-slate-500">Esta ação não pode ser desfeita (será aplicado soft delete).</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Você tem certeza que deseja excluir esta tarefa? Ela será ocultada de todos os fluxos e dashboards.
+            </p>
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setTaskToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2 text-xs font-semibold border border-slate-200 rounded-sm hover:bg-slate-50 cursor-pointer transition text-center disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTask}
+                disabled={isDeleting}
+                className="flex-1 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-sm cursor-pointer transition text-center disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Excluindo...</span>
+                  </>
+                ) : (
+                  <span>Sim, Excluir</span>
                 )}
               </button>
             </div>
