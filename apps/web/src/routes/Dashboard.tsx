@@ -20,7 +20,11 @@ import {
   Clock,
   CheckCircle,
   FileText,
-  Inbox
+  Inbox,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Calendar
 } from 'lucide-react';
 
 const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
@@ -45,7 +49,12 @@ export function Dashboard() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [score, setScore] = useState(1);
+  const [dueDate, setDueDate] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  // Metrics State
+  const [metrics, setMetrics] = useState<any | null>(null);
+  const [isMetricsLoading, setIsMetricsLoading] = useState(false);
 
   // Drag and Drop State
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
@@ -72,6 +81,19 @@ export function Dashboard() {
     }
   };
 
+  const fetchMetrics = async () => {
+    setIsMetricsLoading(true);
+    try {
+      const data = await tasksApi.getMetrics();
+      setMetrics(data);
+    } catch (error) {
+      console.error('Fetch metrics error:', error);
+      toast.error('Erro ao buscar os indicadores da dashboard.');
+    } finally {
+      setIsMetricsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchTasks();
@@ -79,6 +101,12 @@ export function Dashboard() {
   }, [user]);
 
   const isAdmin = user?.roles?.includes('admin');
+
+  useEffect(() => {
+    if (activeTab === 'dashboard' && isAdmin) {
+      fetchMetrics();
+    }
+  }, [activeTab, isAdmin]);
 
   useEffect(() => {
     if (!isAdmin && activeTab === 'dashboard') {
@@ -126,6 +154,7 @@ export function Dashboard() {
         description: description || undefined,
         score,
         created_by_id: user.id,
+        due_date: dueDate ? new Date(dueDate).toISOString() : null,
       });
       setTasks((prev) => [newTask, ...prev]);
       toast.success('Tarefa criada com sucesso!');
@@ -133,6 +162,7 @@ export function Dashboard() {
       setTitle('');
       setDescription('');
       setScore(1);
+      setDueDate('');
     } catch (error: any) {
       console.error('Create task error:', error);
       toast.error(error.response?.data?.message || 'Erro ao criar tarefa.');
@@ -296,75 +326,292 @@ export function Dashboard() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'dashboard' ? (
-          /* DASHBOARD TAB - SaaS Metrics Overview */
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Painel de Indicadores</h1>
-              <p className="text-xs text-slate-500">
-                Visão geral baseada em dados e indicadores para acompanhamento das metas do time.
-              </p>
+          isMetricsLoading && !metrics ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" />
+              <span className="text-xs text-slate-500 font-medium animate-pulse">Carregando indicadores...</span>
             </div>
-
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-4">
-                <div className="w-10 h-10 rounded-sm bg-slate-50 text-slate-600 border border-slate-200 flex items-center justify-center">
-                  <FileText className="w-5 h-5" />
-                </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Total de Tarefas</span>
-                  <span className="text-xl font-bold text-slate-800">{totalTasks}</span>
+                  <h1 className="text-xl font-bold tracking-tight text-slate-900">Painel de Indicadores</h1>
+                  <p className="text-xs text-slate-500">
+                    Visão geral baseada em dados e indicadores para acompanhamento das metas do time.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchMetrics}
+                  disabled={isMetricsLoading}
+                  className="self-start sm:self-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-sm shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Clock className={`w-3.5 h-3.5 ${isMetricsLoading ? 'animate-spin' : ''}`} />
+                  <span>{isMetricsLoading ? 'Atualizando...' : 'Atualizar Dados'}</span>
+                </button>
+              </div>
+
+              {/* Quick Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total Tasks Card */}
+                <div className="bg-white p-4.5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-3.5">
+                  <div className="w-9 h-9 rounded-sm bg-slate-50 text-slate-700 border border-slate-200 flex items-center justify-center shrink-0">
+                    <FileText className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Total de Tarefas</span>
+                    <span className="text-lg font-bold text-slate-800">
+                      {metrics ? (metrics.flowStatus.TODO + metrics.flowStatus.IN_PROGRESS + metrics.flowStatus.IN_REVIEW + metrics.flowStatus.COMPLETED) : totalTasks}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Active Score Card */}
+                <div className="bg-white p-4.5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-3.5">
+                  <div className="w-9 h-9 rounded-sm bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+                    <Award className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Pontos Ativos</span>
+                    <span className="text-lg font-bold text-slate-800">
+                      {metrics ? metrics.workload.reduce((acc: number, w: any) => acc + w.totalScore, 0) : tasks.filter(t => t.status !== 'COMPLETED').reduce((acc, t) => acc + t.score, 0)} <span className="text-[10px] font-normal text-slate-500">pts</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Deadlines At Risk Card */}
+                <div className="bg-white p-4.5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-3.5">
+                  <div className="w-9 h-9 rounded-sm bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Prazos Críticos</span>
+                    <span className="text-lg font-bold text-slate-800">{metrics?.criticalDeadlines?.length ?? 0}</span>
+                  </div>
+                </div>
+
+                {/* Completed Tasks Card */}
+                <div className="bg-white p-4.5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-3.5">
+                  <div className="w-9 h-9 rounded-sm bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+                    <CheckCircle className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Concluídas</span>
+                    <span className="text-lg font-bold text-slate-800">
+                      {metrics ? metrics.flowStatus.COMPLETED : completedCount}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-white p-5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-4">
-                <div className="w-10 h-10 rounded-sm bg-slate-50 text-slate-600 border border-slate-200 flex items-center justify-center">
-                  <Award className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Pontuação Total (Score)</span>
-                  <span className="text-xl font-bold text-slate-800">{totalScore} <span className="text-xs font-normal text-slate-500">pts</span></span>
-                </div>
-              </div>
+              {/* Main Grid: Workload Balancer & Side Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* WORKLOAD BALANCER COLUMN */}
+                <div className="bg-white border border-slate-200 rounded-sm lg:col-span-2 flex flex-col">
+                  <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Carga de Trabalho do Time</h2>
+                    <p className="text-[10px] text-slate-400">Balanceamento de tarefas e pontos por colaborador ativo.</p>
+                  </div>
 
-              <div className="bg-white p-5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-4">
-                <div className="w-10 h-10 rounded-sm bg-slate-50 text-slate-600 border border-slate-200 flex items-center justify-center">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Em Execução</span>
-                  <span className="text-xl font-bold text-slate-800">{inProgressCount + inReviewCount}</span>
-                </div>
-              </div>
+                  <div className="p-4 flex-1 space-y-4">
+                    {metrics?.workload && metrics.workload.length > 0 ? (
+                      metrics.workload.map((member: any) => {
+                        const maxCap = 15;
+                        const activeScore = member.totalScore;
+                        const percentage = Math.min((activeScore / maxCap) * 100, 100);
+                        
+                        let statusColor = 'bg-slate-500';
+                        let statusLabel = 'Ocioso';
+                        let statusBadge = 'bg-slate-100 text-slate-600 border-slate-200';
+                        
+                        if (activeScore > 15) {
+                          statusColor = 'bg-rose-500';
+                          statusLabel = 'Sobrecarregado';
+                          statusBadge = 'bg-rose-50 text-rose-700 border-rose-200';
+                        } else if (activeScore >= 11) {
+                          statusColor = 'bg-amber-500';
+                          statusLabel = 'Alerta';
+                          statusBadge = 'bg-amber-50 text-amber-700 border-amber-200';
+                        } else if (activeScore >= 1) {
+                          statusColor = 'bg-emerald-500';
+                          statusLabel = 'Ideal';
+                          statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                        }
 
-              <div className="bg-white p-5 rounded-sm border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center gap-4">
-                <div className="w-10 h-10 rounded-sm bg-slate-50 text-slate-600 border border-slate-200 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5" />
+                        return (
+                          <div key={member.userId} className="p-3 border border-slate-100 rounded-sm hover:bg-slate-50/50 transition duration-150 space-y-2.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                              <div>
+                                <span className="text-xs font-bold text-slate-800 block">{member.userName}</span>
+                                <span className="text-[10px] text-slate-400">{member.userEmail}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm border ${statusBadge}`}>
+                                  {statusLabel}
+                                </span>
+                                <span className="text-[11px] font-bold text-slate-700">
+                                  {activeScore} <span className="text-[9px] font-normal text-slate-400">pts ativos</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Capacity bar */}
+                            <div className="w-full bg-slate-100 h-1.5 rounded-sm overflow-hidden">
+                              <div className={`h-full ${statusColor} transition-all duration-300`} style={{ width: `${percentage}%` }} />
+                            </div>
+
+                            {/* Additional details */}
+                            <div className="flex items-center gap-4 text-[10px] text-slate-500 pt-0.5">
+                              <div>
+                                Tarefas ativas: <span className="font-bold text-slate-700">{member.taskCount}</span>
+                              </div>
+                              <div className="w-1 h-1 rounded-full bg-slate-300" />
+                              <div>
+                                Concluídas: <span className="font-bold text-slate-700">{member.completedTaskCount}</span>
+                              </div>
+                              <div className="w-1 h-1 rounded-full bg-slate-300" />
+                              <div>
+                                Entregue: <span className="font-bold text-slate-700">{member.completedTotalScore} pts</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-12 text-center text-xs text-slate-400">Nenhum colaborador encontrado.</div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Concluídas</span>
-                  <span className="text-xl font-bold text-slate-800">{completedCount}</span>
+
+                {/* RIGHT SIDE DETAILS: VELOCITY & DEADLINES */}
+                <div className="space-y-6">
+                  
+                  {/* VELOCITY METRIC CARD */}
+                  <div className="bg-white border border-slate-200 rounded-sm p-4 space-y-4">
+                    <div>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Velocidade Semanal</h2>
+                      <p className="text-[10px] text-slate-400">Pontuação entregue nos últimos 7 dias vs semana anterior.</p>
+                    </div>
+
+                    {metrics?.weeklyVelocity ? (() => {
+                      const current = metrics.weeklyVelocity.currentWeekScore;
+                      const previous = metrics.weeklyVelocity.previousWeekScore;
+                      let diffPercent = 0;
+                      let isTrendUp = true;
+                      
+                      if (previous > 0) {
+                        diffPercent = Math.round(((current - previous) / previous) * 100);
+                        isTrendUp = current >= previous;
+                      } else if (current > 0) {
+                        diffPercent = 100;
+                        isTrendUp = true;
+                      } else {
+                        diffPercent = 0;
+                        isTrendUp = true;
+                      }
+
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400 block">Velocidade Atual</span>
+                              <span className="text-2xl font-black text-slate-800">{current} <span className="text-xs font-bold text-slate-400">pts</span></span>
+                            </div>
+                            
+                            {diffPercent !== 0 ? (
+                              <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-sm text-xs font-bold ${
+                                isTrendUp ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}>
+                                {isTrendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                <span>{isTrendUp ? '+' : ''}{diffPercent}%</span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-sm">Sem variação</span>
+                            )}
+                          </div>
+
+                          {/* Comparison Visualizer */}
+                          <div className="space-y-2 pt-1">
+                            <div className="space-y-1 text-[10px] text-slate-500">
+                              <div className="flex justify-between">
+                                <span>Esta semana</span>
+                                <span className="font-bold text-slate-700">{current} pts</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-2 rounded-xs overflow-hidden">
+                                <div className="h-full bg-emerald-500" style={{ width: `${Math.min(current * 4, 100)}%` }} />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1 text-[10px] text-slate-500">
+                              <div className="flex justify-between">
+                                <span>Semana anterior</span>
+                                <span className="font-bold text-slate-700">{previous} pts</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-2 rounded-xs overflow-hidden">
+                                <div className="h-full bg-slate-400" style={{ width: `${Math.min(previous * 4, 100)}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })() : (
+                      <div className="text-center text-xs text-slate-400">Calculando velocidade...</div>
+                    )}
+                  </div>
+
+                  {/* CRITICAL DEADLINES CARD */}
+                  <div className="bg-white border border-slate-200 rounded-sm p-4 space-y-4">
+                    <div>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">Prazos em Risco</h2>
+                      <p className="text-[10px] text-slate-400">Tarefas não concluídas que venceram ou vencem em 48h.</p>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[350px] overflow-y-auto custom-scrollbar">
+                      {metrics?.criticalDeadlines && metrics.criticalDeadlines.length > 0 ? (
+                        metrics.criticalDeadlines.map((task: any) => {
+                          const dueDateObj = new Date(task.due_date);
+                          const isOverdue = dueDateObj < new Date();
+                          
+                          return (
+                            <div key={task.id} className="p-2.5 border border-rose-100 bg-rose-50/20 rounded-sm space-y-1">
+                              <div className="flex justify-between gap-1.5">
+                                <span className="text-[11px] font-bold text-slate-800 break-words leading-tight flex-1">{task.title}</span>
+                                <span className="bg-white border border-rose-200 text-rose-800 text-[8px] font-bold px-1 rounded-sm shrink-0 self-start">{task.score} pts</span>
+                              </div>
+                              
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-slate-500">
+                                <div className="flex items-center gap-0.5 font-bold text-rose-700">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>Vence: {dueDateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
+                                </div>
+                                <span className="text-slate-300">•</span>
+                                <div>
+                                  Colaborador: <span className="font-semibold text-slate-600">{task.assigned_to?.name ?? 'Não atribuído'}</span>
+                                </div>
+                              </div>
+
+                              {isOverdue && (
+                                <div className="text-[8px] uppercase tracking-wider font-extrabold text-rose-600">
+                                  Tarefa Atrasada!
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="py-6 text-center border border-dashed border-emerald-200 bg-emerald-50/20 rounded-sm flex flex-col items-center justify-center gap-1">
+                          <CheckCircle className="w-5 h-5 text-emerald-500" />
+                          <span className="text-[10px] text-emerald-800 font-bold">Excelente!</span>
+                          <span className="text-[9px] text-emerald-600">Nenhum prazo crítico em risco.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
-
-            {/* Empty States / Information panel */}
-            <div className="bg-white p-8 rounded-sm border border-slate-200 text-center space-y-4">
-              <div className="w-12 h-12 rounded-sm bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center mx-auto">
-                <LayoutDashboard className="w-6 h-6" />
-              </div>
-              <h2 className="text-base font-bold text-slate-800">Gráficos e Métricas Avançadas</h2>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                Em breve, esta tela exibirá gráficos de velocidade, burndown e distribuição de score por funcionário para ajudar o gestor Ricardo na tomada de decisão.
-              </p>
-              <button
-                onClick={() => setActiveTab('tasks')}
-                className="px-3.5 py-2 bg-[#1E293B] hover:bg-[#334155] text-white text-xs font-semibold rounded-sm transition cursor-pointer"
-              >
-                Ir para o Quadro de Tarefas
-              </button>
-            </div>
-          </div>
+          )
         ) : (
           /* KANBAN BOARD TAB */
           <div className="space-y-4">
@@ -443,6 +690,25 @@ export function Dashboard() {
                                 <p className="text-[11px] text-slate-500 line-clamp-3 leading-relaxed">
                                   {task.description}
                                 </p>
+                              )}
+
+                              {/* Task Due Date */}
+                              {task.due_date && (
+                                <div className={`flex items-center gap-1 text-[10px] ${
+                                  new Date(task.due_date) < new Date() && task.status !== 'COMPLETED'
+                                    ? 'text-red-600 font-semibold'
+                                    : 'text-slate-500'
+                                }`}>
+                                  <Clock className="w-3 h-3 shrink-0" />
+                                  <span>
+                                    Prazo: {new Date(task.due_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                  </span>
+                                  {new Date(task.due_date) < new Date() && task.status !== 'COMPLETED' && (
+                                    <span className="text-[8px] uppercase font-bold bg-red-50 text-red-600 px-1 rounded-sm border border-red-200">
+                                      Atrasada
+                                    </span>
+                                  )}
+                                </div>
                               )}
 
                               {/* Footer Actions / Assignee */}
@@ -569,6 +835,18 @@ export function Dashboard() {
                   min={0}
                   value={score}
                   onChange={(e) => setScore(Number(e.target.value))}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Prazo (Opcional)
+                </label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
                   className="w-full px-3 py-1.5 border border-slate-200 rounded-sm text-xs bg-white focus:outline-none focus:border-slate-400 transition"
                 />
               </div>

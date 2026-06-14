@@ -8,6 +8,8 @@ export class Task {
   status!: TaskStatus;
   assigned_to_id?: string | null;
   created_by_id!: string;
+  due_date?: Date | null;
+  completed_at?: Date | null;
   created_at!: Date;
   updated_at!: Date;
   deleted_at?: Date | null;

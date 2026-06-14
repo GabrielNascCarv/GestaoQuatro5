@@ -18,6 +18,8 @@ export class GetTaskUseCase implements IGetTaskUseCase {
       status: task.status,
       assigned_to_id: task.assigned_to_id ?? null,
       created_by_id: task.created_by_id,
+      due_date: task.due_date ?? null,
+      completed_at: task.completed_at ?? null,
       created_at: task.created_at,
       updated_at: task.updated_at,
     };

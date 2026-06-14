@@ -5,6 +5,7 @@ export interface CreateTaskInput {
   description?: string;
   score: number;
   created_by_id: string;
+  due_date?: string | Date;
 }
 
 export interface CreateTaskOutput {
@@ -15,6 +16,8 @@ export interface CreateTaskOutput {
   status: TaskStatus;
   assigned_to_id: string | null;
   created_by_id: string;
+  due_date: Date | null;
+  completed_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
