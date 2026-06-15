@@ -114,9 +114,9 @@ Ao popular o banco de dados usando `npm run db:seed` com o Keycloak importado, v
 
 ## 🎯 Metodologia de Gestão Adotada
 
-Para solucionar as dores do Ricardo, o projeto adota um modelo híbrido combinando **Kanban** e **Ciclos Semanais (Sprints Curtas)**:
+Para solucionar as dores do Ricardo, o projeto adota um modelo inspirado no **Jira**, utilizando quadros de tarefas e **Ciclos Semanais (Sprints Curtas)**:
 
-1. **Visualização por Kanban**: Organiza as tarefas em quatro colunas (*A Fazer*, *Em Desenvolvimento*, *Em Revisão* e *Concluído*). Isso elimina o problema de tarefas espalhadas em papel/WhatsApp, permitindo a centralização e acompanhamento do fluxo de trabalho do time em tempo real.
+1. **Quadro de Tarefas (Inspirado no Jira)**: Organiza as tarefas em quatro colunas de fluxo (*A Fazer*, *Em Desenvolvimento*, *Em Revisão* e *Concluído*). Isso centraliza a gestão de tarefas (como no Jira), permitindo o acompanhamento em tempo real e eliminando anotações soltas ou mensagens de WhatsApp.
 2. **Ciclos Semanais (Sprints)**: Toda segunda-feira o time planeja e executa tarefas em um ciclo curto. No final da semana (ou no início da próxima), o Administrador realiza o **Fechamento de Semana**, o que limpa o quadro para o novo ciclo e arquiva os dados do ciclo concluído em um **Relatório Semanal**. Isso resolve a falta de números nas reuniões de segunda, gerando um histórico confiável.
 
 ---
@@ -145,7 +145,7 @@ Cada indicador foi projetado para munir o Ricardo de dados para tomada de decis�
 Para garantir a entrega de uma arquitetura limpa e funcional no prazo de 48 horas, foram tomadas as seguintes decisões de cortes:
 * **Interface de Gerenciamento de Usuários**: A criação e exclusão de contas foram delegadas ao Keycloak. Os usuários são provisionados e sincronizados no banco de dados automaticamente através do arquivo de semente (`seed.ts`), mantendo o foco do desenvolvimento no dashboard e nas tarefas.
 * **Histórico Evolutivo Completo**: Em vez de gráficos interativos de linha de longo prazo (como *Cumulative Flow Diagram*), optou-se por focar na comparação semanal ágil (velocidade da semana ativa vs. anterior) e num visualizador dropdown de relatórios antigos, otimizando o tempo de entrega sem perder o histórico do Ricardo.
-* **Atribuição Manual Complexa**: Em vez de fluxos complexos de delegação de tarefas, a ferramenta foca em auto-atribuição rápida de tarefas ativas e troca de status direta no Kanban para simplificar a usabilidade inicial.
+* **Atribuição Manual Complexa**: Em vez de fluxos complexos de delegação de tarefas, a ferramenta foca em auto-atribuição rápida de tarefas ativas e troca de status direta no quadro para simplificar a usabilidade inicial.
 
 ---
 
@@ -156,4 +156,4 @@ Caso o projeto contasse com um prazo maior, seriam implementadas as seguintes me
 2. **Recuperação de Senha via E-mail**:
    * Implementação de endpoint de "esqueci minha senha" para gerar e enviar um código de recuperação temporário via e-mail do usuário (integrado a serviços como Amazon SES, SendGrid ou Nodemailer).
    * Implementação de um endpoint de validação encarregado de ler o código enviado, compará-lo com o hash salvo no banco de dados e liberar a criação de uma nova credencial após a validação bem-sucedida.
-3. **Refinamento na Estimativa de Pontuação das Tarefas**: Atualmente, a pontuação das tarefas é informada de forma direta e manual, assumindo que o Ricardo sabe exatamente quanto vale cada tarefa. Como na realidade ele pode não saber mensurar esse valor, implementaria um assistente ou modelo de estimativa de complexidade (ex: tamanho de camiseta P/M/G ou nível de esforço simplificado de 1 a 5) que converteria as respostas dele em pontuação de forma intuitiva.
+3. **Regra de Negócio na Estimativa de Pontuação**: Atualmente, a pontuação das tarefas é informada de forma manual direta por número. Como Ricardo não possui perfil técnico para mensurar esses valores com precisão, esta seria uma regra de negócio a ser melhor pensada (como mapear seletores simplificados de complexidade para valores numéricos nos bastidores) para evitar essa complexidade manual para ele.
